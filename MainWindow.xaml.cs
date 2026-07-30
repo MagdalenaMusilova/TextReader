@@ -9,6 +9,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using TextReader.TextInputs;
 
 namespace TextReader;
 
@@ -17,14 +18,17 @@ namespace TextReader;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private ITextInput _textInput;
+    
     public MainWindow()
     {
         InitializeComponent();
+        _textInput = new RandomTextInput(50);
     }
 
     private void LoadButton_Click(object sender, RoutedEventArgs e)
     {
-        string[] lines = ["One", "Two", "AAAA afg  eh he e e  a"];
+        string[] lines = _textInput.GetLines(1);
         Reader.AppendLines(lines);
     }
     
