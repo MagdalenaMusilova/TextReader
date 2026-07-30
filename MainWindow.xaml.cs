@@ -23,13 +23,13 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _textInput = new RandomTextInput(50);
+        _textInput = new RandomTextInput(128*10);
+        Reader.Load(_textInput);
     }
 
     private void LoadButton_Click(object sender, RoutedEventArgs e)
     {
-        string[] lines = _textInput.GetLines(1);
-        Reader.AppendLines(lines);
+
     }
     
     private void SaveButton_Click(object sender, RoutedEventArgs e)

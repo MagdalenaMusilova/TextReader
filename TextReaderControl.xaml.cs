@@ -3,6 +3,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
+using TextReader.TextInputs;
 
 namespace TextReader;
 
@@ -10,14 +11,19 @@ public partial class TextReaderControl : UserControl
 {
     const double DefaultFontSize = 14;
     const double XOffset = 10;
-    const double YOffset = 10;
+    const double YOffsetTop = 10;
     private double _lineHeight;
-    
+    private int _visibleLinesCount;
+    private const int bufferMaxSize = 128;
+
     private readonly DrawingVisual _drawingVisual;
     
-    private readonly List<string> _lines = new();
+    private ITextInput _textInput;
+    private readonly string[] _buffer = new string[bufferMaxSize];
+    private int _curBufferSize;
+    private int _bufferStartIndex = 0;
     private int _curLineCount = 0;
-    private int _linesShownCount = 15;
+    private int _linesShownCount;
     
     public TextReaderControl()
     {
@@ -27,6 +33,18 @@ public partial class TextReaderControl : UserControl
         
         // Calculate line height once
         _lineHeight = CreateFormattedText("Sample").Height;
+    }
+
+    protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
+    {
+        base.OnRenderSizeChanged(sizeInfo);
+        _visibleLinesCount = (int)Math.Floor((ActualHeight - YOffsetTop) / _lineHeight);
+        if (_textInput != null)
+        {
+            ScrollBar.Maximum = _textInput.LinesCount - _visibleLinesCount;
+            ScrollBar.UpdateLayout();
+            RenderVisibleLines();
+        }
     }
 
     public FormattedText CreateFormattedText(in string text)
@@ -40,10 +58,18 @@ public partial class TextReaderControl : UserControl
             Brushes.Black,
             1.0);
     }
-    
-    public void AppendLines(IEnumerable<string> lines)
+
+    public void Load(ITextInput textInput)
     {
-        _lines.AddRange(lines);
+        Clear();
+        _textInput = textInput;
+        ScrollBar.Maximum = _textInput.LinesCount - _visibleLinesCount;
+        LoadBuffer(0);
+        RenderVisibleLines();
+    }
+
+    public void Clear()
+    {
         RenderVisibleLines();
     }
     
@@ -51,14 +77,12 @@ public partial class TextReaderControl : UserControl
     {
         using (DrawingContext dc = _drawingVisual.RenderOpen())
         {
-            // lineI = index of which line is being printed, basically _curLineCount + i
-            // renderI = index of which line in the reader is being printed. 0 means at the top of the window
-            for (int lineI = _curLineCount, renderI = 0;
-                 renderI < _linesShownCount && lineI < _lines.Count;
-                 lineI++, renderI++)
+            for (int i = 0, bufferI = _curLineCount - _bufferStartIndex;
+                 i < _visibleLinesCount && bufferI < _curBufferSize;
+                 i++, bufferI++)
             {
-                var formattedText = CreateFormattedText(_lines[lineI]);
-                double yPos = YOffset + renderI * _lineHeight;
+                var formattedText = CreateFormattedText(_buffer[bufferI]);
+                double yPos = YOffsetTop + i * _lineHeight;
                 dc.DrawText(formattedText, new Point(XOffset, yPos));
             }
         }
@@ -71,7 +95,24 @@ public partial class TextReaderControl : UserControl
             return;
         }
 
-        _curLineCount = (int)ScrollBar.Value;
+        MoveToIndex((int)ScrollBar.Value);
         RenderVisibleLines();
+    }
+
+    private void MoveToIndex(int index)
+    {
+        _curLineCount = index;
+        ScrollBar.Value = _curLineCount;
+        if (index <= _bufferStartIndex || index + _visibleLinesCount >= _bufferStartIndex + _curBufferSize)
+        {
+            LoadBuffer(index);
+        }
+        RenderVisibleLines();
+    }
+
+    private void LoadBuffer(int startIndex)
+    {
+        _bufferStartIndex = startIndex;
+        _curBufferSize = _textInput.GetLines(_bufferStartIndex, bufferMaxSize, _buffer);
     }
 }

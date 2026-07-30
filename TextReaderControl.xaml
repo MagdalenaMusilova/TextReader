@@ -36,7 +36,6 @@
                        x:Name="ScrollBar"
                        Orientation="Vertical"
                        Minimum="0"
-                       Maximum="100"
                        SmallChange="1"
                        LargeChange="20"
                        Scroll="Scroll_OnScroll"/>

@@ -2,7 +2,6 @@
 
 public interface ITextInput
 {
-    public bool EndOfInput { get; }
-    public string GetLine();
-    public string[] GetLines(in int lineCount);
+    public int LinesCount { get; }
+    public int GetLines(int startIndex, int lineCount, string[] buffer);
 }

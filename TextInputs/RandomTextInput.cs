@@ -4,30 +4,45 @@ namespace TextReader.TextInputs;
 
 public class RandomTextInput : ITextInput
 {
-    private Faker _faker = new Faker();
     private int _maxLines;
     private int _curLineCount = 0;
+    private string[] lines;
     
     public RandomTextInput(in int maxLines)
     {
         _maxLines = maxLines;
+        lines = new string[_maxLines];
+        GenerateLines();
     }
 
-    public bool EndOfInput => _curLineCount >= _maxLines;
-
-    public string GetLine()
+    public int LinesCount => _maxLines;
+    
+    public int GetLines(int startIndex, int lineCount, string[] buffer)
     {
-        _curLineCount++;
-        return _faker.Lorem.Sentence();
-    }
+        _curLineCount = startIndex;
+        if (_curLineCount + lineCount >= _maxLines)
+        {
+            lineCount = _maxLines - _curLineCount;
+        }
 
-    public string[] GetLines(in int lineCount)
-    {
-        string[] res = new string[lineCount];
         for (int i = 0; i < lineCount; i++)
         {
-            res[i] = GetLine();
+            buffer[i] = lines[_curLineCount++];
         }
-        return res;
+        
+        return lineCount;
+    }
+
+    private void GenerateLines()
+    {
+        /*Faker faker = new Faker();
+        for (int i = 0; i < _maxLines; i++)
+        {
+            lines[i] = faker.Lorem.Sentence();
+        }*/
+        for (int i = 0; i < _maxLines; i++)
+        {
+            lines[i] = i.ToString();
+        }
     }
 }
