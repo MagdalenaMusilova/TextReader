@@ -5,47 +5,53 @@ namespace TextReader.TextInputs;
 public class RandomTextInput : ITextInput
 {
     public event EventHandler? FinishedLoadingEvent;
-
-    private long _maxLines;
-    private long _curLineCount = 0;
-    private string[] lines;
     
-    public RandomTextInput(in long maxLines)
+    private string _fullText;
+    private long _curBytePosition = 0;
+    
+    public bool EOF => _curBytePosition >= _fullText.Length;
+    public long Length => _fullText.Length;
+    
+    public RandomTextInput(in int numOfSentences)
     {
-        _maxLines = maxLines;
-        lines = new string[_maxLines];
-        GenerateLines();
+        GenerateLines(numOfSentences);
         FinishedLoadingEvent?.Invoke(this, EventArgs.Empty);
     }
 
-    public long LinesCount => _maxLines;
-    
-    public int GetLines(long startIndex, int lineCount, string[] buffer)
+    private RandomTextInput()
     {
-        _curLineCount = startIndex;
-        if (_curLineCount + lineCount >= _maxLines)
-        {
-            lineCount = (int)(_maxLines - _curLineCount);
-        }
-
-        for (int i = 0; i < lineCount; i++)
-        {
-            buffer[i] = lines[_curLineCount++];
-        }
-        
-        return lineCount;
     }
 
-    private void GenerateLines()
+    public ITextInput Copy()
     {
-        /*Faker faker = new Faker();
-        for (int i = 0; i < _maxLines; i++)
+        var res = new RandomTextInput();
+        res._fullText = _fullText;
+        return res;
+    }
+
+    public void Seek(long index)
+    {
+        _curBytePosition = index;
+    }
+
+    public int ReadByte()
+    {
+        if (EOF)
         {
-            lines[i] = faker.Lorem.Sentence();
-        }*/
-        for (int i = 0; i < _maxLines; i++)
-        {
-            lines[i] = i.ToString();
+            return -1;
         }
+        return _fullText[(int)_curBytePosition++];
+    }
+
+    public string Read(long size)
+    {
+        return _fullText.Substring((int)_curBytePosition, (int)size);
+    }
+
+    private void GenerateLines(in int numOfSentences)
+    {
+        Faker faker = new Faker();
+        var sentences = faker.Lorem.Sentences(numOfSentences);
+        _fullText = string.Join(Environment.NewLine, sentences);
     }
 }

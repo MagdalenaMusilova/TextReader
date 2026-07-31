@@ -2,7 +2,9 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
 using System.Windows.Media;
+using TextReader.Models;
 using TextReader.TextInputs;
 
 namespace TextReader;
@@ -18,13 +20,12 @@ public partial class TextReaderControl : UserControl
 
     private readonly DrawingVisual _drawingVisual;
     
-    private ITextInput _textInput;
+    private LoadedText _loadedText;
     private bool _textInputAssigned = false;
     private readonly string[] _buffer = new string[bufferMaxSize];
     private int _curBufferSize;
     private int _bufferStartIndex = 0;
     private int _curLineCount = 0;
-    private int _linesShownCount;
     
     public TextReaderControl()
     {
@@ -58,8 +59,8 @@ public partial class TextReaderControl : UserControl
     public void Load(ITextInput textInput)
     {
         Clear();
-        _textInput = textInput;
-        _textInput.FinishedLoadingEvent += (sender, args) => RerenderUCElements();
+        _loadedText = new LoadedText(textInput);
+        _loadedText.FinishedLoadingEvent += (sender, args) => RerenderUCElements();
         _textInputAssigned = true;
         
         LoadBuffer(0);
@@ -75,7 +76,7 @@ public partial class TextReaderControl : UserControl
     {
         if (_textInputAssigned)
         {
-            ScrollBar.Maximum = _textInput.LinesCount - _visibleLinesCount + 1;
+            ScrollBar.Maximum = _loadedText.LinesCount - _visibleLinesCount + 1;
             ScrollBar.UpdateLayout();
             RenderVisibleLines();
         }
@@ -121,6 +122,12 @@ public partial class TextReaderControl : UserControl
     private void LoadBuffer(int startIndex)
     {
         _bufferStartIndex = startIndex;
-        _curBufferSize = _textInput.GetLines(_bufferStartIndex, bufferMaxSize, _buffer);
+        _curBufferSize = _loadedText.GetLines(_bufferStartIndex, bufferMaxSize, _buffer);
+    }
+
+    private void SearchButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        string word = SearchTextBox.Text;
+        var wordPositions = _loadedText.Search(word);
     }
 }

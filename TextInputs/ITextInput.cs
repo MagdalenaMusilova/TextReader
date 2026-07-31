@@ -2,8 +2,11 @@
 
 public interface ITextInput
 {
-    public event EventHandler FinishedLoadingEvent;
-    
-    public long LinesCount { get; }
-    public int GetLines(long startIndex, int lineCount, string[] buffer);
+    public bool EOF { get; }
+    public long Length { get; }
+
+    public ITextInput Copy();
+    public void Seek(long index);
+    public int ReadByte();
+    public string Read(long size);
 }
