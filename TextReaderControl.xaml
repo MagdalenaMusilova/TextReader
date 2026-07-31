@@ -13,6 +13,18 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
+        <!-- Search Bar -->
+        <Border Grid.Row="0" x:Name="SearchBar" Visibility="Visible" Background="#F0F0F0" BorderBrush="#CFCFCF" BorderThickness="0,0,0,1" Padding="5">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Find:" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <TextBox x:Name="SearchTextBox" MinWidth="200" VerticalAlignment="Center"/>
+                <Button x:Name="SearchButton" Content="Search" Margin="5,0,0,0" Padding="10,2" Click="SearchButton_OnClick"/>
+                <Button x:Name="SearchUpButton" Content="↑" Width="25" Margin="5,0,0,0"/>
+                <Button x:Name="SearchDownButton" Content="↓" Width="25" Margin="5,0,0,0"/>
+                <Button x:Name="SearchCloseButton" Content="✕" Width="25" Margin="5,0,0,0"/>
+            </StackPanel>
+        </Border>
+
         <!-- Reader -->
         <Grid Grid.Row="1">
 
