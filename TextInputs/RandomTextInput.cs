@@ -4,25 +4,28 @@ namespace TextReader.TextInputs;
 
 public class RandomTextInput : ITextInput
 {
-    private int _maxLines;
-    private int _curLineCount = 0;
+    public event EventHandler? FinishedLoadingEvent;
+
+    private long _maxLines;
+    private long _curLineCount = 0;
     private string[] lines;
     
-    public RandomTextInput(in int maxLines)
+    public RandomTextInput(in long maxLines)
     {
         _maxLines = maxLines;
         lines = new string[_maxLines];
         GenerateLines();
+        FinishedLoadingEvent?.Invoke(this, EventArgs.Empty);
     }
 
-    public int LinesCount => _maxLines;
+    public long LinesCount => _maxLines;
     
-    public int GetLines(int startIndex, int lineCount, string[] buffer)
+    public int GetLines(long startIndex, int lineCount, string[] buffer)
     {
         _curLineCount = startIndex;
         if (_curLineCount + lineCount >= _maxLines)
         {
-            lineCount = _maxLines - _curLineCount;
+            lineCount = (int)(_maxLines - _curLineCount);
         }
 
         for (int i = 0; i < lineCount; i++)

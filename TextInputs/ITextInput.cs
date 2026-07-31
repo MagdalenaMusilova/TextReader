@@ -2,6 +2,8 @@
 
 public interface ITextInput
 {
-    public int LinesCount { get; }
-    public int GetLines(int startIndex, int lineCount, string[] buffer);
+    public event EventHandler FinishedLoadingEvent;
+    
+    public long LinesCount { get; }
+    public int GetLines(long startIndex, int lineCount, string[] buffer);
 }

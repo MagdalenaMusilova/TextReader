@@ -19,6 +19,7 @@ public partial class TextReaderControl : UserControl
     private readonly DrawingVisual _drawingVisual;
     
     private ITextInput _textInput;
+    private bool _textInputAssigned = false;
     private readonly string[] _buffer = new string[bufferMaxSize];
     private int _curBufferSize;
     private int _bufferStartIndex = 0;
@@ -39,12 +40,7 @@ public partial class TextReaderControl : UserControl
     {
         base.OnRenderSizeChanged(sizeInfo);
         _visibleLinesCount = (int)Math.Floor((ActualHeight - YOffsetTop) / _lineHeight);
-        if (_textInput != null)
-        {
-            ScrollBar.Maximum = _textInput.LinesCount - _visibleLinesCount;
-            ScrollBar.UpdateLayout();
-            RenderVisibleLines();
-        }
+        RerenderUCElements();
     }
 
     public FormattedText CreateFormattedText(in string text)
@@ -63,14 +59,26 @@ public partial class TextReaderControl : UserControl
     {
         Clear();
         _textInput = textInput;
-        ScrollBar.Maximum = _textInput.LinesCount - _visibleLinesCount;
+        _textInput.FinishedLoadingEvent += (sender, args) => RerenderUCElements();
+        _textInputAssigned = true;
+        
         LoadBuffer(0);
-        RenderVisibleLines();
+        RerenderUCElements();
     }
 
     public void Clear()
     {
         RenderVisibleLines();
+    }
+
+    private void RerenderUCElements()
+    {
+        if (_textInputAssigned)
+        {
+            ScrollBar.Maximum = _textInput.LinesCount - _visibleLinesCount + 1;
+            ScrollBar.UpdateLayout();
+            RenderVisibleLines();
+        }
     }
     
     private void RenderVisibleLines()
