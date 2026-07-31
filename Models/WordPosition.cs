@@ -2,6 +2,6 @@
 
 public struct WordPosition
 {
-    public long lineIndex;
+    public int lineIndex;
     public long lineOffset;
 }

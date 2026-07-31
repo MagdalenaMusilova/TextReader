@@ -156,6 +156,7 @@ public class LoadedText
         {
             lineOffsetsI = ~lineOffsetsI;
         }
+        
         return new WordPosition{
             lineIndex = lineOffsetsI, 
             lineOffset = index - _lineOffsets[lineOffsetsI]

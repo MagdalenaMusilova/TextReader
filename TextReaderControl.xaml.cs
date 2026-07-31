@@ -27,6 +27,9 @@ public partial class TextReaderControl : UserControl
     private int _bufferStartIndex = 0;
     private int _curLineCount = 0;
     
+    private List<WordPosition> _searchResults = new();
+    private int _searchIndex = 0;
+    
     public TextReaderControl()
     {
         InitializeComponent();
@@ -104,11 +107,11 @@ public partial class TextReaderControl : UserControl
             return;
         }
 
-        MoveToIndex((int)ScrollBar.Value);
+        ScrollToIndex((int)ScrollBar.Value);
         RenderVisibleLines();
     }
 
-    private void MoveToIndex(int index)
+    private void ScrollToIndex(int index)
     {
         _curLineCount = index;
         ScrollBar.Value = _curLineCount;
@@ -128,6 +131,44 @@ public partial class TextReaderControl : UserControl
     private void SearchButton_OnClick(object sender, RoutedEventArgs e)
     {
         string word = SearchTextBox.Text;
-        var wordPositions = _loadedText.Search(word);
+        _searchIndex = 0;
+        _searchResults = _loadedText.Search(word);
+        LoadSearchResult();
+    }
+
+    private void SearchUpButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        //todo handle 0 results
+        _searchIndex = 
+            _searchIndex == 0 
+                ? _searchResults.Count - 1 
+                : _searchIndex - 1;
+        LoadSearchResult();
+    }
+
+    private void SearchDownButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        _searchIndex = 
+            _searchIndex == _searchResults.Count - 1 
+                ? 0 
+                : _searchIndex + 1;
+        LoadSearchResult();
+    }
+    
+    private void LoadSearchResult()
+    {
+        SearchResultsIndexes.Text = $"{_searchIndex + 1}/{_searchResults.Count}";
+        if (_searchResults.Count > 0)
+        {
+            ScrollToIndex(_searchResults[_searchIndex].lineIndex);
+        }
+    }
+
+    public void ShowSearchBox() => SearchBar.Visibility = Visibility.Visible;
+    public void HideSearchBox() => SearchBar.Visibility = Visibility.Collapsed;
+
+    private void SearchCloseButton_OnClick(object sender, RoutedEventArgs e)
+    {
+        HideSearchBox();
     }
 }
