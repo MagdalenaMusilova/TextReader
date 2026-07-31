@@ -23,7 +23,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _textInput = new RandomTextInput(128*10);
+        _textInput = new FileTextInput("../../../Data/book.txt");
         Reader.Load(_textInput);
     }
 
