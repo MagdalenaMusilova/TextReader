@@ -37,9 +37,12 @@ public class UrlTextInput : ITextInput
             Task.Run(() =>
             {
                 DownloadFullFile();
-                var position = _usedInput.Position;
-                _usedInput = new FileTextInput(_tmpFilePath);
-                _usedInput.Seek(position);
+                var fileTextImput = new FileTextInput(_tmpFilePath);
+                fileTextImput.DataReadyEvent += (sender, args) =>
+                {
+                    fileTextImput.Seek(Position);
+                    _usedInput = fileTextImput;
+                };
             });   
         }
         else

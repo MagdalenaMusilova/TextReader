@@ -46,7 +46,9 @@ public class RandomTextInput : ITextInput
 
     public string Read(long size)
     {
-        return _fullText.Substring((int)_curBytePosition, (int)size);
+        var res = _fullText.Substring((int)_curBytePosition, (int)size);
+        _curBytePosition += size;
+        return res;
     }
 
     private void GenerateLines(in int numOfSentences)

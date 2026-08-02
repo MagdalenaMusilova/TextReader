@@ -78,9 +78,9 @@ public class OnlyUrlTextInput : ITextInput
     public string Read(long size)
     {
         List<string> results = new List<string>();
-        
+
         long firstChunk = (_currentPosition / CHUNK_SIZE) * CHUNK_SIZE;
-        long lastChunk = ((_currentPosition + size - 1) / CHUNK_SIZE) * CHUNK_SIZE;
+        long lastChunk = ((_currentPosition + size) / CHUNK_SIZE) * CHUNK_SIZE;
         for (long index = firstChunk;
              index <= lastChunk;
              index+= CHUNK_SIZE)
@@ -91,11 +91,12 @@ public class OnlyUrlTextInput : ITextInput
             }
 
             long startOffset = index != firstChunk ? 0 : _currentPosition % CHUNK_SIZE;
-            long chunkSize = index != lastChunk ? CHUNK_SIZE : (_currentPosition + size - 1) % CHUNK_SIZE;
+            long chunkSize = index != lastChunk ? CHUNK_SIZE : (_currentPosition + size) % CHUNK_SIZE;
             var res = ReadChunk(index, (int)startOffset, (int)chunkSize);
             results.Add(res);
         }
 
+        _currentPosition += size;
         return string.Concat(results);
     }
 
@@ -122,7 +123,7 @@ public class OnlyUrlTextInput : ITextInput
         long chunkStartIndex = (index / CHUNK_SIZE) * CHUNK_SIZE;
     
         var request = new HttpRequestMessage(HttpMethod.Get, _url);
-        request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(chunkStartIndex, chunkStartIndex + CHUNK_SIZE - 1);
+        request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(chunkStartIndex, chunkStartIndex + CHUNK_SIZE);
     
         using var response = HttpClient
             .SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
