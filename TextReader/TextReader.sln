@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TextReader", "TextReader.csproj", "{6564D2DF-6102-42D7-A674-60EA8C56F513}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TextReader.Test", "..\TextReader.Test\TextReader.Test.csproj", "{C9E3DEA4-92F8-4E87-A960-7ED6D2EE0BEF}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{6564D2DF-6102-42D7-A674-60EA8C56F513}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{6564D2DF-6102-42D7-A674-60EA8C56F513}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{6564D2DF-6102-42D7-A674-60EA8C56F513}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9E3DEA4-92F8-4E87-A960-7ED6D2EE0BEF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9E3DEA4-92F8-4E87-A960-7ED6D2EE0BEF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9E3DEA4-92F8-4E87-A960-7ED6D2EE0BEF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9E3DEA4-92F8-4E87-A960-7ED6D2EE0BEF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
