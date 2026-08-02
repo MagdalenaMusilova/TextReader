@@ -110,6 +110,72 @@ public class FileTextInputTests : IDisposable
         Assert.Equal(_testContent, result);
         Assert.True(input.EOF);
     }
+
+    [Fact]
+    public async Task SaveToFileAsync_ShouldCopyFileContent()
+    {
+        using var input = new FileTextInput(_testFilePath);
+        var destPath = Path.GetTempFileName();
+
+        try
+        {
+            await input.SaveToFileAsync(destPath);
+
+            Assert.True(File.Exists(destPath));
+            var destContent = await File.ReadAllTextAsync(destPath);
+            Assert.Equal(_testContent, destContent);
+        }
+        finally
+        {
+            if (File.Exists(destPath))
+            {
+                File.Delete(destPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SaveToFileAsync_ShouldNotAffectPosition()
+    {
+        using var input = new FileTextInput(_testFilePath);
+        input.Seek(5);
+        var destPath = Path.GetTempFileName();
+
+        try
+        {
+            await input.SaveToFileAsync(destPath);
+
+            Assert.Equal(5, input.Position);
+        }
+        finally
+        {
+            if (File.Exists(destPath))
+            {
+                File.Delete(destPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SaveToFileAsync_ShouldOverwriteExistingFile()
+    {
+        using var input = new FileTextInput(_testFilePath);
+        var destPath = Path.GetTempFileName();
+
+        try
+        {
+            await File.WriteAllTextAsync(destPath, "Old content");
+            await input.SaveToFileAsync(destPath);
+
+            var destContent = await File.ReadAllTextAsync(destPath);
+            Assert.Equal(_testContent, destContent);
+        }
+        finally
+        {
+            if (File.Exists(destPath))
+            {
+                File.Delete(destPath);
+            }
+        }
+    }
 }
-
-

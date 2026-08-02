@@ -88,4 +88,5 @@ public class OnlyUrlTextInputTests
         Assert.NotNull(utf8Input);
         Assert.NotNull(asciiInput);
     }
+
 }

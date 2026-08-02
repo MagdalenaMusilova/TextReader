@@ -113,4 +113,51 @@ public class RandomTextInputTests
         // With high probability, random text should be different
         Assert.NotEqual(content1, content2);
     }
+
+    [Fact]
+    public async Task SaveToFileAsync_ShouldSaveGeneratedContent()
+    {
+        var input = new RandomTextInput(10);
+        var originalContent = input.Read(input.Length);
+        input.Seek(0);
+        var destPath = Path.GetTempFileName();
+
+        try
+        {
+            await input.SaveToFileAsync(destPath);
+
+            Assert.True(File.Exists(destPath));
+            var savedContent = await File.ReadAllTextAsync(destPath);
+            Assert.Equal(originalContent, savedContent);
+        }
+        finally
+        {
+            if (File.Exists(destPath))
+            {
+                File.Delete(destPath);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task SaveToFileAsync_ShouldNotAffectPosition()
+    {
+        var input = new RandomTextInput(10);
+        input.Seek(5);
+        var destPath = Path.GetTempFileName();
+
+        try
+        {
+            await input.SaveToFileAsync(destPath);
+
+            Assert.Equal(5, input.Position);
+        }
+        finally
+        {
+            if (File.Exists(destPath))
+            {
+                File.Delete(destPath);
+            }
+        }
+    }
 }
