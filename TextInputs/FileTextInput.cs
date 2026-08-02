@@ -6,17 +6,19 @@ namespace TextReader.TextInputs;
 
 public class FileTextInput : ITextInput
 {
-    
     private FileStream _stream;
     private Encoding _encoding;
 
+    public event EventHandler? DataReadyEvent;
     public bool EOF => _stream.Position >= _stream.Length;
     public long Length => _stream.Length;
+    public long Position => _stream.Position;
 
     public FileTextInput(string filePath)
     {
         _stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         SetEncoding();
+        DataReadyEvent?.Invoke(this, EventArgs.Empty);
     }
     
     private FileTextInput()
@@ -32,7 +34,7 @@ public class FileTextInput : ITextInput
     
     ~FileTextInput()
     {
-        _stream.Close();
+        Close();
     }
 
     public ITextInput Copy()
@@ -58,5 +60,10 @@ public class FileTextInput : ITextInput
         byte[] buffer = new byte[size];
         _stream.ReadExactly(buffer);
         return _encoding.GetString(buffer);
+    }
+
+    public void Close()
+    {
+        _stream.Close();
     }
 }

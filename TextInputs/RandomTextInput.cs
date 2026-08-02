@@ -4,18 +4,19 @@ namespace TextReader.TextInputs;
 
 public class RandomTextInput : ITextInput
 {
-    public event EventHandler? FinishedLoadingEvent;
+    public event EventHandler? DataReadyEvent;
     
     private string _fullText;
     private long _curBytePosition = 0;
-    
+
     public bool EOF => _curBytePosition >= _fullText.Length;
     public long Length => _fullText.Length;
-    
+    public long Position => _curBytePosition;
+
     public RandomTextInput(in int numOfSentences)
     {
         GenerateLines(numOfSentences);
-        FinishedLoadingEvent?.Invoke(this, EventArgs.Empty);
+        DataReadyEvent?.Invoke(this, EventArgs.Empty);
     }
 
     private RandomTextInput()
