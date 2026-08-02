@@ -1,4 +1,5 @@
-﻿using Bogus;
+﻿using System.IO;
+using Bogus;
 
 namespace TextReader.TextInputs;
 
@@ -49,6 +50,11 @@ public class RandomTextInput : ITextInput
         var res = _fullText.Substring((int)_curBytePosition, (int)size);
         _curBytePosition += size;
         return res;
+    }
+
+    public async Task SaveToFileAsync(string destFileName)
+    {
+        await File.WriteAllTextAsync(destFileName, _fullText);
     }
 
     private void GenerateLines(in int numOfSentences)

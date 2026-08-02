@@ -12,4 +12,5 @@ public interface ITextInput
     public void Seek(long index);
     public int ReadByte();
     public string Read(long size);
+    public Task SaveToFileAsync(string destFileName);
 }

@@ -100,6 +100,11 @@ public class OnlyUrlTextInput : ITextInput
         return string.Concat(results);
     }
 
+    public Task SaveToFileAsync(string destFileName)
+    {
+        throw new NotImplementedException("This text input only reading in memory, not saving to a file.");
+    }
+    
     private string ReadChunk(long index, int startOffset, int size)
     {
         var chunkIndex = GetChunkIndex(index);

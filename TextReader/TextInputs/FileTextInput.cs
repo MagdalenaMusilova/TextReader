@@ -6,6 +6,7 @@ namespace TextReader.TextInputs;
 
 public class FileTextInput : ITextInput, IDisposable
 {
+    private string _filePath;
     private FileStream _stream;
     private Encoding _encoding;
     private long _textLength;
@@ -16,12 +17,14 @@ public class FileTextInput : ITextInput, IDisposable
     public long Length => _textLength;
     public long Position => _position;
 
-    public FileTextInput(string filePath)
+    public FileTextInput(string filePath, long position = 0)
     {
+        _filePath = filePath;
         _stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
         SetEncoding();
         CalculateTextLength();
-        _stream.Seek(0, SeekOrigin.Begin);
+        _position = position;
+        _stream.Seek(_position, SeekOrigin.Begin);
         DataReadyEvent?.Invoke(this, EventArgs.Empty);
     }
     
@@ -65,13 +68,8 @@ public class FileTextInput : ITextInput, IDisposable
 
     public void Seek(long index)
     {
-        _stream.Seek(0, SeekOrigin.Begin);
-        _position = 0;
-
-        if (index > 0)
-        {
-            Read(index);
-        }
+        _stream.Seek(index, SeekOrigin.Begin);
+        _position = index;
     }
 
     public int ReadByte()
@@ -103,6 +101,14 @@ public class FileTextInput : ITextInput, IDisposable
 
         _position += size;
         return _encoding.GetString(bytes.ToArray());
+    }
+
+    public async Task SaveToFileAsync(string destFileName)
+    {
+        await using var source = File.OpenRead(_filePath);
+        await using var destination = File.Create(destFileName);
+
+        await source.CopyToAsync(destination);
     }
 
     public void Close()

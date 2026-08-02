@@ -15,10 +15,12 @@ public class UrlTextInput : ITextInput
     
     private string? _tmpFilePath;
     private bool _tmpFileUsed = false;
+    private bool _fileTextInputUsed = false;
 
     private long _length;
     private Encoding _encoding;
     private bool _supportsPartialRequests;
+    private long _position; // needed to ensure that switching from OnlyUrlTextInput to FileTextInput won't change position. Race condition - position is updated only after reading is finished. So change source while reading -> wrong position
 
     public bool EOF => _usedInput.EOF;
     public long Length => _usedInput.Length;
@@ -37,18 +39,16 @@ public class UrlTextInput : ITextInput
             Task.Run(() =>
             {
                 DownloadFullFile();
-                var fileTextImput = new FileTextInput(_tmpFilePath);
-                fileTextImput.DataReadyEvent += (sender, args) =>
-                {
-                    fileTextImput.Seek(Position);
-                    _usedInput = fileTextImput;
-                };
+                var fileTextImput = new FileTextInput(_tmpFilePath, _position);
+                _usedInput = fileTextImput;
+                _fileTextInputUsed = true;
             });   
         }
         else
         {
             DownloadFullFile();
             _usedInput = new FileTextInput(_tmpFilePath);
+            _fileTextInputUsed = true;
             _usedInput.DataReadyEvent += (sender, args) => DataReadyEvent?.Invoke(this, args);
         }
     }
@@ -95,12 +95,34 @@ public class UrlTextInput : ITextInput
             response.Headers.AcceptRanges != null && response.Headers.AcceptRanges.Contains("bytes");
     }
 
-    public void Seek(long index) => _usedInput.Seek(index);
+    public void Seek(long index)
+    {
+        _position = index;
+        _usedInput.Seek(index);
+    }
 
-    public int ReadByte() => _usedInput.ReadByte();
+    public int ReadByte()
+    {
+        _position++;
+        return _usedInput.ReadByte();
+    }
 
 
-    public string Read(long size) => _usedInput.Read(size);
+    public string Read(long size)
+    {
+        _position += size;
+        return _usedInput.Read(size);
+    }
+
+    public async Task SaveToFileAsync(string destFileName)
+    {
+        while (!_fileTextInputUsed) //todo mby use event instead? But that could create race condition?
+        {
+            await Task.Delay(100);
+        }
+
+        await _usedInput.SaveToFileAsync(destFileName);
+    }
 
     private void DownloadFullFile()
     {
