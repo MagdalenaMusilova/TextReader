@@ -11,8 +11,8 @@ public class RandomTextInput : ITextInput
     private long _curBytePosition = 0;
 
     public bool EOF => _curBytePosition >= _fullText.Length;
-    public long Length => _fullText.Length;
     public long Position => _curBytePosition;
+    public long ByteLength => _fullText.Length; //should be only 1B chars => string len == byte lenght 
 
     public RandomTextInput(in int numOfSentences)
     {
@@ -31,18 +31,23 @@ public class RandomTextInput : ITextInput
         return res;
     }
 
-    public void Seek(long index)
+    public void Seek(long byteIndex)
     {
-        _curBytePosition = index;
+        _curBytePosition = byteIndex;
     }
 
-    public int ReadByte()
+    public int Read()
     {
         if (EOF)
         {
             return -1;
         }
         return _fullText[(int)_curBytePosition++];
+    }
+
+    public int Peak()
+    {
+        return _fullText[(int)_curBytePosition];
     }
 
     public string Read(long size)
@@ -62,5 +67,9 @@ public class RandomTextInput : ITextInput
         Faker faker = new Faker();
         var sentences = faker.Lorem.Sentences(numOfSentences);
         _fullText = string.Join(Environment.NewLine, sentences);
+    }
+    
+    public void Dispose()
+    {
     }
 }

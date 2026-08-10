@@ -23,8 +23,8 @@ public class UrlTextInput : ITextInput
     private long _position; // needed to ensure that switching from OnlyUrlTextInput to FileTextInput won't change position. Race condition - position is updated only after reading is finished. So change source while reading -> wrong position
 
     public bool EOF => _usedInput.EOF;
-    public long Length => _usedInput.Length;
     public long Position => _usedInput.Position;
+    public long ByteLength => _usedInput.ByteLength;
 
     public UrlTextInput(string url)
     {
@@ -95,16 +95,21 @@ public class UrlTextInput : ITextInput
             response.Headers.AcceptRanges != null && response.Headers.AcceptRanges.Contains("bytes");
     }
 
-    public void Seek(long index)
+    public void Seek(long byteIndex)
     {
-        _position = index;
-        _usedInput.Seek(index);
+        _position = byteIndex;
+        _usedInput.Seek(byteIndex);
     }
 
-    public int ReadByte()
+    public int Read()
     {
         _position++;
-        return _usedInput.ReadByte();
+        return _usedInput.Read();
+    }
+
+    public int Peak()
+    {
+        return _usedInput.Peak();
     }
 
 
@@ -149,5 +154,10 @@ public class UrlTextInput : ITextInput
         _tmpFileUsed = true;
 
         input.CopyTo(output);
+    }
+    
+    public void Dispose()
+    {
+
     }
 }

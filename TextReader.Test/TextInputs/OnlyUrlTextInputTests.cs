@@ -13,7 +13,7 @@ public class OnlyUrlTextInputTests
     {
         var input = new OnlyUrlTextInput(TestUrl, TestLength, _testEncoding);
 
-        Assert.Equal(TestLength, input.Length);
+        Assert.Equal(TestLength, input.ByteLength);
         Assert.Equal(0, input.Position);
         Assert.False(input.EOF);
     }
@@ -54,7 +54,7 @@ public class OnlyUrlTextInputTests
         var copy = original.Copy();
 
         Assert.Equal(0, copy.Position);
-        Assert.Equal(original.Length, copy.Length);
+        Assert.Equal(original.ByteLength, copy.ByteLength);
         Assert.NotSame(original, copy);
     }
 
@@ -64,7 +64,7 @@ public class OnlyUrlTextInputTests
         var input = new OnlyUrlTextInput(TestUrl, TestLength, _testEncoding);
         input.Seek(TestLength);
 
-        var result = input.ReadByte();
+        var result = input.Read();
         Assert.Equal(-1, result);
     }
 
@@ -74,7 +74,7 @@ public class OnlyUrlTextInputTests
         var input = new OnlyUrlTextInput(TestUrl, TestLength, _testEncoding);
         var initialPosition = input.Position;
 
-        input.ReadByte();
+        input.Read();
 
         Assert.Equal(initialPosition + 1, input.Position);
     }

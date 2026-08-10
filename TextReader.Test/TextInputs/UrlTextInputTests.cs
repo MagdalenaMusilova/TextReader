@@ -15,7 +15,7 @@ public class UrlTextInputTests
         {
             var input = new UrlTextInput(TestUrl);
 
-            Assert.True(input.Length > 0);
+            Assert.True(input.ByteLength > 0);
             Assert.Equal(0, input.Position);
             Assert.False(input.EOF);
         }
@@ -34,7 +34,7 @@ public class UrlTextInputTests
         {
             var input = new UrlTextInput(TestUrl);
 
-            var firstByte = input.ReadByte();
+            var firstByte = input.Read();
             Assert.True(firstByte >= 0);
             Assert.Equal(1, input.Position);
         }
@@ -59,7 +59,7 @@ public class UrlTextInputTests
             var copy = original.Copy();
 
             Assert.NotSame(original, copy);
-            Assert.Equal(original.Length, copy.Length);
+            Assert.Equal(original.ByteLength, copy.ByteLength);
         }
 
         [Fact]
@@ -70,7 +70,7 @@ public class UrlTextInputTests
 
             Assert.False(input.EOF);
 
-            input.Seek(input.Length);
+            input.Seek(input.ByteLength);
             Assert.True(input.EOF);
         }
 
@@ -90,7 +90,7 @@ public class UrlTextInputTests
             var input = new UrlTextInput(TestUrl);
             Thread.Sleep(100); // Allow initialization
 
-            Assert.True(input.Length > 0);
+            Assert.True(input.ByteLength > 0);
         }
     }
 

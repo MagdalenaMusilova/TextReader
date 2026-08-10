@@ -35,6 +35,7 @@ public class SearchFeature
     
     private List<int> FindAllOccurencesFromPossibilities(string word, List<int> possibilities)
     {
+        cache.Add(word, new List<int>());
         foreach (var index in possibilities)
         {
             _input.Seek(index);
@@ -67,7 +68,7 @@ public class SearchFeature
         int readByte;
         for (int i = 0; i < word.Length; i++)
         {
-            readByte = _input.ReadByte();
+            readByte = _input.Read();
             if (readByte != word[i])
             {
                 return false;

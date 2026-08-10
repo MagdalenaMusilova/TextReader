@@ -13,27 +13,27 @@ public class OnlyUrlTextInput : ITextInput
     private static readonly HttpClient HttpClient = new HttpClient();
     
     private string _url;
-    private long _length;
     private Encoding _encoding;
+    private long _byteLength;
     
     private long _currentPosition = 0;
     private Dictionary<long, string> _chunkCache = new Dictionary<long, string>();
 
-    public bool EOF => _currentPosition >= _length;
-    public long Length => _length;
+    public bool EOF => _currentPosition >= _byteLength;
     public long Position => _currentPosition;
+    public long ByteLength => _byteLength;
 
-    public OnlyUrlTextInput(string url, long length, Encoding encoding)
+    public OnlyUrlTextInput(string url, long byteLength, Encoding encoding)
     {
         _url = url;
-        _length = length;
+        _byteLength = byteLength;
         _encoding = encoding;
         DataReadyEvent?.Invoke(this, EventArgs.Empty);
     }
     
     public ITextInput Copy()
     {
-        return new OnlyUrlTextInput(_url, _length, _encoding);
+        return new OnlyUrlTextInput(_url, _byteLength, _encoding);
     }
     
     private bool IsIndexCached(long index)
@@ -55,12 +55,12 @@ public class OnlyUrlTextInput : ITextInput
         return chunkIndex;
     }
 
-    public void Seek(long index)
+    public void Seek(long byteIndex)
     {
-        _currentPosition = index;
+        _currentPosition = byteIndex;
     }
 
-    public int ReadByte()
+    public int Read()
     {
         if (EOF)
         {
@@ -73,6 +73,13 @@ public class OnlyUrlTextInput : ITextInput
         }
 
         return GetByteFromCache();
+    }
+
+    public int Peak()
+    {
+        var res = GetByteFromCache();
+        _currentPosition--;
+        return res;
     }
 
     public string Read(long size)
@@ -143,5 +150,10 @@ public class OnlyUrlTextInput : ITextInput
             .GetResult();
 
         _chunkCache[chunkStartIndex] = _encoding.GetString(chunk);
+    }
+
+    public void Dispose()
+    {
+        
     }
 }

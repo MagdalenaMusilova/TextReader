@@ -30,7 +30,7 @@ public class FileTextInputTests : IDisposable
         using var input = new FileTextInput(_testFilePath);
 
         Assert.False(input.EOF);
-        Assert.Equal(_testContent.Length, input.Length);
+        Assert.Equal(_testContent.Length, input.ByteLength);
         Assert.Equal(0, input.Position);
     }
 
@@ -52,7 +52,7 @@ public class FileTextInputTests : IDisposable
     {
         using var input = new FileTextInput(_testFilePath);
 
-        var firstByte = input.ReadByte();
+        var firstByte = input.Read();
         Assert.Equal('H', (char)firstByte);
         Assert.Equal(1, input.Position);
     }
@@ -84,7 +84,7 @@ public class FileTextInputTests : IDisposable
     {
         using var input = new FileTextInput(_testFilePath);
 
-        input.Seek(input.Length);
+        input.Seek(input.ByteLength);
         Assert.True(input.EOF);
     }
 
@@ -97,7 +97,7 @@ public class FileTextInputTests : IDisposable
         using var copy = (FileTextInput)original.Copy();
 
         Assert.Equal(0, copy.Position);
-        Assert.Equal(original.Length, copy.Length);
+        Assert.Equal(original.ByteLength, copy.ByteLength);
         Assert.NotSame(original, copy);
     }
 
@@ -106,7 +106,7 @@ public class FileTextInputTests : IDisposable
     {
         using var input = new FileTextInput(_testFilePath);
 
-        var result = input.Read(input.Length);
+        var result = input.Read(input.ByteLength);
         Assert.Equal(_testContent, result);
         Assert.True(input.EOF);
     }

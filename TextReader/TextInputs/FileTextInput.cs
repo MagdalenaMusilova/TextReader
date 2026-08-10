@@ -4,54 +4,27 @@ using TextReader.Enums;
 
 namespace TextReader.TextInputs;
 
-public class FileTextInput : ITextInput, IDisposable
+public class FileTextInput : ITextInput
 {
     private string _filePath;
-    private FileStream _stream;
-    private Encoding _encoding;
-    private long _textLength;
-    private long _position;
+    private FileStream _fileStream;
+
+    private long _length;
 
     public event EventHandler? DataReadyEvent;
-    public bool EOF => _stream.Position >= _stream.Length;
-    public long Length => _textLength;
-    public long Position => _position;
+    public bool EOF => Position >= _length;
+    public long Position => _fileStream.Position;
+    public long ByteLength => _length;
 
-    public FileTextInput(string filePath, long position = 0)
+    public FileTextInput(string filePath, long bytePosition = 0)
     {
         _filePath = filePath;
-        _stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        SetEncoding();
-        CalculateTextLength();
-        _position = position;
-        _stream.Seek(_position, SeekOrigin.Begin);
+        _fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        _length = _fileStream.Length;
+        Seek(bytePosition);
         DataReadyEvent?.Invoke(this, EventArgs.Empty);
     }
-    
-    private FileTextInput()
-    {
-    }
-    
-    private void SetEncoding()
-    {
-        _stream.Seek(0, SeekOrigin.Begin);
-        using var tmp = new StreamReader(_stream, detectEncodingFromByteOrderMarks: true, leaveOpen: true); //todo better way to get encoding?
-        tmp.Peek();
-        _encoding = tmp.CurrentEncoding;
-        _stream.Seek(0, SeekOrigin.Begin);
-    }
 
-    private void CalculateTextLength()
-    {
-        _stream.Seek(0, SeekOrigin.Begin);
-
-        byte[] buffer = new byte[_stream.Length];
-        _stream.ReadExactly(buffer);
-        _textLength = _encoding.GetCharCount(buffer);
-
-        _stream.Seek(0, SeekOrigin.Begin);
-    }
-    
     ~FileTextInput()
     {
         Dispose(false);
@@ -59,48 +32,36 @@ public class FileTextInput : ITextInput, IDisposable
 
     public ITextInput Copy()
     {
-        var res = new FileTextInput();
-        res._stream = new FileStream(_stream.Name, FileMode.Open, FileAccess.Read, FileShare.Read);
-        res._encoding = _encoding;
-        res._textLength = _textLength;
-        return res;
+        return new FileTextInput(_filePath, 0);
     }
 
-    public void Seek(long index)
+    public void Seek(long byteIndex)
     {
-        _stream.Seek(index, SeekOrigin.Begin);
-        _position = index;
+        _fileStream.Seek(byteIndex, SeekOrigin.Begin);
     }
 
-    public int ReadByte()
+    public int Read()
     {
-        int result = _stream.ReadByte();
-        if (result != -1)
+        return _fileStream.ReadByte();
+    }
+
+    public int Peak()
+    {
+        int b = _fileStream.ReadByte();
+        if (b != -1)
         {
-            _position++;
+            _fileStream.Seek(-1, SeekOrigin.Current);
         }
-        return result;
+        return b;
     }
+
 
     public string Read(long size)
     {
-        // Need to read enough bytes to get 'size' characters
-        List<byte> bytes = new List<byte>();
-        long charsRead = 0;
+        byte[] buffer = new byte[size];
+        int bytesRead = _fileStream.Read(buffer, 0, (int)size);
 
-        while (charsRead < size && !EOF)
-        {
-            int b = _stream.ReadByte();
-            if (b == -1) break;
-
-            bytes.Add((byte)b);
-
-            // Check how many characters we have so far
-            charsRead = _encoding.GetCharCount(bytes.ToArray());
-        }
-
-        _position += size;
-        return _encoding.GetString(bytes.ToArray());
+        return Encoding.UTF8.GetString(buffer, 0, bytesRead);
     }
 
     public async Task SaveToFileAsync(string destFileName)
@@ -113,7 +74,7 @@ public class FileTextInput : ITextInput, IDisposable
 
     public void Close()
     {
-        _stream.Close();
+        _fileStream.Close();
     }
 
     public void Dispose()
@@ -126,7 +87,8 @@ public class FileTextInput : ITextInput, IDisposable
     {
         if (disposing)
         {
-            _stream?.Dispose();
+            _fileStream.Close();
+            _fileStream.Dispose();
         }
     }
 }

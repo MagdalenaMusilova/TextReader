@@ -37,14 +37,14 @@ public class LoadedText
     {
         //todo use this to get the first new line
         _newLineType = NewLineType.N;   // dummy value, in case there is no newline
-        
+
         int readByte;
-        while ((readByte = _input.ReadByte()) != -1)
+        while ((readByte = _input.Read()) != -1)
         {
             // check if newline
             if (readByte == '\r')
             {
-                int nextByte = _input.ReadByte();
+                int nextByte = _input.Read();
                 if (nextByte == '\n')
                 {
                     _newLineType = NewLineType.RN;
@@ -66,51 +66,60 @@ public class LoadedText
             }
         }
 
+        // Reset position to beginning after detecting newline type
+        _input.Seek(0);
+
         switch (_newLineType)
         {
             case NewLineType.N:
-                _isNextByteNewLine = (stream) => stream.ReadByte() == '\n';
+                _isNextByteNewLine = (stream) => stream.Read() == '\n';
                 break;
             case NewLineType.R:
-                _isNextByteNewLine = (stream) => stream.ReadByte() == '\r';
+                _isNextByteNewLine = (stream) => stream.Read() == '\r';
                 break;
-            case NewLineType.RN: 
-                _isNextByteNewLine = (stream) => stream.ReadByte() == '\r' && stream.ReadByte() == '\n';
+            case NewLineType.RN:
+                _isNextByteNewLine = (stream)  =>
+                {
+                    if (stream.Read() == '\r')
+                    {
+                        if (stream.Peak() == '\n')
+                        {
+                            stream.Read(); // consume \n
+                            return true;
+                        }
+                    }
+                    return false;
+                };
                 break;
         }
     }
     
     private void GuessNumberOfLines()
     {
-        _linesCountGuess = (int)(_input.Length / charsPerLine);
+        _linesCountGuess = (int)Math.Ceiling(_input.ByteLength / (double)charsPerLine);
     }
     
     private void CalculateLineOffsets()
     {
         Task.Run(() =>
         {
-            var tmpInput = _input.Copy();
+            using var tmpInput = _input.Copy();
             _lineOffsets.Capacity = (int)LinesCount;
-            long offset = 0;
 
             _lineOffsets.Add(0);
 
-            while (offset < tmpInput.Length)
+            while (tmpInput.Position < tmpInput.ByteLength)
             {
                 if (_isNextByteNewLine(tmpInput))
                 {
-                    offset += _newLineSize;
-                    _lineOffsets.Add(offset);
-                    continue;
+                    _lineOffsets.Add(tmpInput.Position);
                 }
-                
-                offset++;
             }
 
             // if the file doesnt end with new line, add offset for EOF (for easier calculations)
-            if (_lineOffsets.Last() != tmpInput.Length)    
+            if (_lineOffsets.Last() != tmpInput.ByteLength)
             {
-                _lineOffsets.Add(offset);
+                _lineOffsets.Add(tmpInput.ByteLength);
             }
             _linesCount = _lineOffsets.Count - 1;
 
@@ -155,6 +164,7 @@ public class LoadedText
         if (lineOffsetsI < 0)
         {
             lineOffsetsI = ~lineOffsetsI;
+            lineOffsetsI--;
         }
         
         return new WordPosition{
