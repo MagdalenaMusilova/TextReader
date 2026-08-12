@@ -15,6 +15,7 @@ public class SearchFeature
     
     public List<int> Search(string word)
     {
+        word = word.ToLower();
         if (cache.ContainsKey(word))
         {
             return cache[word];
@@ -69,11 +70,21 @@ public class SearchFeature
         for (int i = 0; i < word.Length; i++)
         {
             readByte = input.Read();
-            if (readByte != word[i])
+            if (readByte != word[i] && readByte != CharToUpperCase(word[i]))
             {
                 return false;
             }
         }
         return true;
+    }
+
+    private int CharToUpperCase(int character)
+    {
+        if (character >= 'a' && character <= 'z')
+        {
+            return character - ('a' - 'A');
+        }
+
+        return character;
     }
 }
