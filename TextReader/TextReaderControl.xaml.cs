@@ -64,6 +64,9 @@ public partial class TextReaderControl : UserControl
 
         // Setup keyboard events for copying
         TextReaderCanvas.KeyDown += Canvas_KeyDown;
+
+        // Setup mouse wheel scrolling
+        TextReaderCanvas.MouseWheel += Canvas_MouseWheel;
     }
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
