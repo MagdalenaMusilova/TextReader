@@ -36,15 +36,32 @@ public partial class TextReaderControl : UserControl
     
     private Dictionary<int, List<long>> _searchHighlights = new();
     private double _searchHighlightWidth = 0;
-    
+
+    // Selection
+    private bool _isSelecting = false;
+    private Point? _selectionStart = null;
+    private Point? _selectionEnd = null;
+    private (int line, int offset)? _selectionStartPos = null;
+    private (int line, int offset)? _selectionEndPos = null;
+
+    private static readonly SolidColorBrush _selection_color = new SolidColorBrush(System.Windows.Media.Color.FromArgb(100, 0, 120, 215));
+
     public TextReaderControl()
     {
         InitializeComponent();
         _drawingVisual = new DrawingVisual();
         TextReaderCanvas.AddVisual(_drawingVisual);
-        
+
         // Calculate line height once
         _lineHeight = CreateFormattedText("Sample").Height;
+
+        // Setup mouse events for selection
+        TextReaderCanvas.MouseLeftButtonDown += Canvas_MouseLeftButtonDown;
+        TextReaderCanvas.MouseMove += Canvas_MouseMove;
+        TextReaderCanvas.MouseLeftButtonUp += Canvas_MouseLeftButtonUp;
+
+        // Setup keyboard events for copying
+        TextReaderCanvas.KeyDown += Canvas_KeyDown;
     }
 
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
@@ -99,6 +116,10 @@ public partial class TextReaderControl : UserControl
 
     private void RenderHighlights(DrawingContext dc)
     {
+        // Render selection
+        RenderSelection(dc);
+
+        // Render search highlights
         foreach ((int lineIndex, List<long> lineOffsets) in _searchHighlights)
         {
             int relativeIndex = lineIndex - _curLine;
@@ -124,6 +145,57 @@ public partial class TextReaderControl : UserControl
                     : _search_results_color;
                 dc.DrawRectangle(color, null, rect);
             }
+        }
+    }
+
+    private void RenderSelection(DrawingContext dc)
+    {
+        if (_selectionStartPos == null || _selectionEndPos == null)
+            return;
+
+        var start = _selectionStartPos.Value;
+        var end = _selectionEndPos.Value;
+
+        // Ensure start is before end
+        if (start.line > end.line || (start.line == end.line && start.offset > end.offset))
+        {
+            (start, end) = (end, start);
+        }
+
+        // Render selection for each visible line
+        for (int lineIndex = start.line; lineIndex <= end.line; lineIndex++)
+        {
+            int relativeIndex = lineIndex - _curLine;
+            if (relativeIndex < 0 || relativeIndex >= _visibleLinesCount)
+                continue;
+
+            int bufferIndex = lineIndex - _bufferStartIndex;
+            if (bufferIndex < 0 || bufferIndex >= _curBufferSize)
+                continue;
+
+            string line = _buffer[bufferIndex];
+
+            int startOffset = (lineIndex == start.line) ? start.offset : 0;
+            int endOffset = (lineIndex == end.line) ? end.offset : line.Length;
+
+            if (startOffset >= line.Length)
+                continue;
+
+            endOffset = Math.Min(endOffset, line.Length);
+
+            string textBefore = line.Substring(0, startOffset);
+            string selectedText = line.Substring(startOffset, endOffset - startOffset);
+
+            var leftPadding = CreateFormattedText(textBefore).WidthIncludingTrailingWhitespace;
+            var selectionWidth = CreateFormattedText(selectedText).WidthIncludingTrailingWhitespace;
+
+            var rect = new Rect(
+                XOffset + leftPadding,
+                YOffsetTop + relativeIndex * _lineHeight,
+                selectionWidth,
+                _lineHeight);
+
+            dc.DrawRectangle(_selection_color, null, rect);
         }
     }
     
@@ -255,5 +327,136 @@ public partial class TextReaderControl : UserControl
     private void SearchDownButton_OnClick(object sender, RoutedEventArgs e)
     {
         GoToNextSearchResult();
+    }
+
+
+    // Mouse Selection
+
+    private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        _isSelecting = true;
+        _selectionStart = e.GetPosition(TextReaderCanvas);
+        _selectionEnd = _selectionStart;
+        _selectionStartPos = GetTextPositionFromPoint(_selectionStart.Value);
+        _selectionEndPos = _selectionStartPos;
+        TextReaderCanvas.CaptureMouse();
+        RenderVisibleLines();
+    }
+
+    private void Canvas_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_isSelecting && e.LeftButton == MouseButtonState.Pressed)
+        {
+            _selectionEnd = e.GetPosition(TextReaderCanvas);
+            _selectionEndPos = GetTextPositionFromPoint(_selectionEnd.Value);
+            RenderVisibleLines();
+        }
+    }
+
+    private void Canvas_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_isSelecting)
+        {
+            _isSelecting = false;
+            TextReaderCanvas.ReleaseMouseCapture();
+
+            // copy selected text to clipboard
+            string selectedText = GetSelectedText();
+            if (!string.IsNullOrEmpty(selectedText))
+            {
+                Clipboard.SetText(selectedText);
+            }
+        }
+    }
+
+    private (int line, int offset) GetTextPositionFromPoint(Point point)
+    {
+        // Calculate line from Y position
+        int relativeLineIndex = (int)Math.Floor((point.Y - YOffsetTop) / _lineHeight);
+        relativeLineIndex = Math.Max(0, Math.Min(relativeLineIndex, _visibleLinesCount - 1));
+        int lineIndex = _curLine + relativeLineIndex;
+
+        int bufferIndex = lineIndex - _bufferStartIndex;
+        if (bufferIndex < 0 || bufferIndex >= _curBufferSize)
+            return (lineIndex, 0);
+
+        string line = _buffer[bufferIndex];
+
+        // Calculate line offset from X position
+        double targetX = point.X - XOffset;
+        int offset = 0;
+
+        for (int i = 0; i <= line.Length; i++)
+        {
+            string substr = line.Substring(0, i);
+            double width = CreateFormattedText(substr).WidthIncludingTrailingWhitespace;
+
+            if (width >= targetX)
+            {
+                offset = i;
+                break;
+            }
+            offset = i;
+        }
+
+        return (lineIndex, offset);
+    }
+
+    private string GetSelectedText()
+    {
+        if (_selectionStartPos == null || _selectionEndPos == null)
+            return string.Empty;
+
+        var start = _selectionStartPos.Value;
+        var end = _selectionEndPos.Value;
+
+        // Ensure start is before end
+        if (start.line > end.line || (start.line == end.line && start.offset > end.offset))
+        {
+            (start, end) = (end, start);
+        }
+
+        if (start.line == end.line && start.offset == end.offset)
+            return string.Empty;
+
+        var result = new System.Text.StringBuilder();
+
+        for (int lineIndex = start.line; lineIndex <= end.line; lineIndex++)
+        {
+            int bufferIndex = lineIndex - _bufferStartIndex;
+            if (bufferIndex < 0 || bufferIndex >= _curBufferSize)
+                continue;
+
+            string line = _buffer[bufferIndex];
+
+            int startOffset = (lineIndex == start.line) ? start.offset : 0;
+            int endOffset = (lineIndex == end.line) ? end.offset : line.Length;
+
+            if (startOffset >= line.Length)
+                continue;
+
+            endOffset = Math.Min(endOffset, line.Length);
+
+            string selectedPart = line.Substring(startOffset, endOffset - startOffset);
+            result.Append(selectedPart);
+
+            if (lineIndex < end.line)
+                result.AppendLine();
+        }
+
+        return result.ToString();
+    }
+
+    private void Canvas_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            string selectedText = GetSelectedText();
+            if (!string.IsNullOrEmpty(selectedText))
+            {
+                Clipboard.SetText(selectedText);
+            }
+            e.Handled = true;
+        }
     }
 }
