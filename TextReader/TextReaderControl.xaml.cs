@@ -483,16 +483,29 @@ public partial class TextReaderControl : UserControl
         e.Handled = true;
     }
 
+    private async void ShowCopyNotification()
+    {
+        CopyNotification.Visibility = Visibility.Visible;
+        await Task.Delay(1500);
+        CopyNotification.Visibility = Visibility.Collapsed;
+    }
+
+    private void CopySelectedText()
+    {
+        string selectedText = GetSelectedText();
+        if (!string.IsNullOrEmpty(selectedText))
+        {
+            Clipboard.SetText(selectedText);
+            ShowCopyNotification();
+        }
+    }
+
     private void Canvas_KeyDown(object sender, KeyEventArgs e)
     {
         //copy
         if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
         {
-            string selectedText = GetSelectedText();
-            if (!string.IsNullOrEmpty(selectedText))
-            {
-                Clipboard.SetText(selectedText);
-            }
+            CopySelectedText();
             e.Handled = true;
         }
         // search
