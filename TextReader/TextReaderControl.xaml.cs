@@ -518,11 +518,13 @@ public partial class TextReaderControl : UserControl
         else if (e.Key == Key.Home)
         {
             ScrollToIndex(0);
+            e.Handled = true;
         } 
         // end of document
         else if (e.Key == Key.End)
         {
             ScrollToIndex((int)(_loadedText.LinesCount - _linesPerPage));
+            e.Handled = true;
         } 
         // prev page
         else if (e.Key == Key.PageUp)
@@ -531,6 +533,7 @@ public partial class TextReaderControl : UserControl
             if (index < 0)
                 index = 0;
             ScrollToIndex(index);
+            e.Handled = true;
         } 
         // next page
         else if (e.Key == Key.PageDown)
@@ -539,6 +542,7 @@ public partial class TextReaderControl : UserControl
             if (index > _loadedText.LinesCount - _linesPerPage)
                 index = (int)(_loadedText.LinesCount - _linesPerPage);
             ScrollToIndex(index);
+            e.Handled = true;
         }
     }
 }
