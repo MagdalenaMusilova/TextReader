@@ -68,7 +68,7 @@ public class SearchFeature
         int readByte;
         for (int i = 0; i < word.Length; i++)
         {
-            readByte = _input.Read();
+            readByte = input.Read();
             if (readByte != word[i])
             {
                 return false;
