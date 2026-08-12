@@ -80,9 +80,9 @@ public partial class TextReaderControl : UserControl
     {
         Clear();
         _loadedText = new LoadedText(textInput);
-        _loadedText.FinishedLoadingEvent += (sender, args) => RerenderUCElements();
+        _loadedText.FinishedLoadingEvent += (sender, args) => Dispatcher.Invoke(RerenderUCElements);
         _textInputAssigned = true;
-        
+
         LoadBuffer(0);
         RerenderUCElements();
     }
@@ -466,6 +466,21 @@ public partial class TextReaderControl : UserControl
         }
 
         return result.ToString();
+    }
+
+    private void Canvas_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        int linesToScroll = -e.Delta / 40; // Delta is typically 120 per notch, scroll ~3 lines per notch
+        int newIndex = _curLine + linesToScroll;
+
+        newIndex = Math.Max(0, Math.Min(newIndex, (int)(_loadedText.LinesCount - _linesPerPage)));
+
+        if (newIndex != _curLine)
+        {
+            ScrollToIndex(newIndex);
+        }
+
+        e.Handled = true;
     }
 
     private void Canvas_KeyDown(object sender, KeyEventArgs e)
