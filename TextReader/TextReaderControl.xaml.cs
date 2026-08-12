@@ -12,11 +12,13 @@ namespace TextReader;
 
 public partial class TextReaderControl : UserControl
 {
+    public bool searchBoxVisible = false;
+    
     const double DefaultFontSize = 14;
     const double XOffset = 10;
     const double YOffsetTop = 10;
     private double _lineHeight;
-    private int _visibleLinesCount;
+    private int _linesPerPage;
     private const int bufferMaxSize = 128;
 
     private static readonly SolidColorBrush _search_highlight_color = Brushes.Yellow;
@@ -67,7 +69,7 @@ public partial class TextReaderControl : UserControl
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
         base.OnRenderSizeChanged(sizeInfo);
-        _visibleLinesCount = (int)Math.Floor((ActualHeight - YOffsetTop) / _lineHeight);
+        _linesPerPage = (int)Math.Floor((ActualHeight - YOffsetTop) / _lineHeight);
         RerenderUCElements();
     }
 
@@ -91,7 +93,7 @@ public partial class TextReaderControl : UserControl
     {
         if (_textInputAssigned)
         {
-            ScrollBar.Maximum = _loadedText.LinesCount - _visibleLinesCount + 1;
+            ScrollBar.Maximum = _loadedText.LinesCount - _linesPerPage + 1;
             ScrollBar.UpdateLayout();
             RenderVisibleLines();
         }
@@ -104,7 +106,7 @@ public partial class TextReaderControl : UserControl
             RenderHighlights(dc);
 
             for (int i = 0, bufferI = _curLine - _bufferStartIndex;
-                 i < _visibleLinesCount && bufferI < _curBufferSize;
+                 i < _linesPerPage && bufferI < _curBufferSize;
                  i++, bufferI++)
             {
                 var formattedText = CreateFormattedText(_buffer[bufferI]);
@@ -123,7 +125,7 @@ public partial class TextReaderControl : UserControl
         foreach ((int lineIndex, List<long> lineOffsets) in _searchHighlights)
         {
             int relativeIndex = lineIndex - _curLine;
-            if (relativeIndex < 0 || relativeIndex >= _visibleLinesCount)
+            if (relativeIndex < 0 || relativeIndex >= _linesPerPage)
             {
                 continue;
             }
@@ -166,7 +168,7 @@ public partial class TextReaderControl : UserControl
         for (int lineIndex = start.line; lineIndex <= end.line; lineIndex++)
         {
             int relativeIndex = lineIndex - _curLine;
-            if (relativeIndex < 0 || relativeIndex >= _visibleLinesCount)
+            if (relativeIndex < 0 || relativeIndex >= _linesPerPage)
                 continue;
 
             int bufferIndex = lineIndex - _bufferStartIndex;
@@ -215,7 +217,7 @@ public partial class TextReaderControl : UserControl
     {
         _curLine = index;
         ScrollBar.Value = _curLine;
-        if (index <= _bufferStartIndex || index + _visibleLinesCount >= _bufferStartIndex + _curBufferSize)
+        if (index <= _bufferStartIndex || index + _linesPerPage >= _bufferStartIndex + _curBufferSize)
         {
             LoadBuffer(index);
         }
@@ -284,9 +286,31 @@ public partial class TextReaderControl : UserControl
         }        
         GoToCurSearchResult();
     }
+
+    public void ToggleSearchBox()
+    {
+        searchBoxVisible = !searchBoxVisible;
+        if (searchBoxVisible)
+        {
+            ShowSearchBox();
+        }
+        else
+        {
+            HideSearchBox();
+        }
+    }
     
-    public void ShowSearchBox() => SearchBar.Visibility = Visibility.Visible;
-    public void HideSearchBox() => SearchBar.Visibility = Visibility.Collapsed;
+    public void ShowSearchBox()
+    {
+        SearchBar.Visibility = Visibility.Visible;
+        searchBoxVisible = true;
+    }
+    
+    public void HideSearchBox()
+    {
+        SearchBar.Visibility = Visibility.Collapsed;
+        searchBoxVisible = false;
+    }
 
 
     
@@ -334,6 +358,7 @@ public partial class TextReaderControl : UserControl
 
     private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        TextReaderCanvas.Focus();
         _isSelecting = true;
         _selectionStart = e.GetPosition(TextReaderCanvas);
         _selectionEnd = _selectionStart;
@@ -359,13 +384,6 @@ public partial class TextReaderControl : UserControl
         {
             _isSelecting = false;
             TextReaderCanvas.ReleaseMouseCapture();
-
-            // copy selected text to clipboard
-            string selectedText = GetSelectedText();
-            if (!string.IsNullOrEmpty(selectedText))
-            {
-                Clipboard.SetText(selectedText);
-            }
         }
     }
 
@@ -373,7 +391,7 @@ public partial class TextReaderControl : UserControl
     {
         // Calculate line from Y position
         int relativeLineIndex = (int)Math.Floor((point.Y - YOffsetTop) / _lineHeight);
-        relativeLineIndex = Math.Max(0, Math.Min(relativeLineIndex, _visibleLinesCount - 1));
+        relativeLineIndex = Math.Max(0, Math.Min(relativeLineIndex, _linesPerPage - 1));
         int lineIndex = _curLine + relativeLineIndex;
 
         int bufferIndex = lineIndex - _bufferStartIndex;
@@ -449,6 +467,7 @@ public partial class TextReaderControl : UserControl
 
     private void Canvas_KeyDown(object sender, KeyEventArgs e)
     {
+        //copy
         if (e.Key == Key.C && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
         {
             string selectedText = GetSelectedText();
@@ -457,6 +476,51 @@ public partial class TextReaderControl : UserControl
                 Clipboard.SetText(selectedText);
             }
             e.Handled = true;
+        }
+        // search
+        else if (e.Key == Key.F && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            ToggleSearchBox();
+            e.Handled = true;
+        }
+        // prev/next search res
+        else if (e.Key == Key.F3)
+        {
+            if (Keyboard.Modifiers == ModifierKeys.Shift)
+            {
+                GoToPrevSearchResult();
+            }
+            else
+            {
+                GoToNextSearchResult();
+            }
+            e.Handled = true;
+        }
+        // top of document
+        else if (e.Key == Key.Home)
+        {
+            ScrollToIndex(0);
+        } 
+        // end of document
+        else if (e.Key == Key.End)
+        {
+            ScrollToIndex((int)(_loadedText.LinesCount - _linesPerPage));
+        } 
+        // prev page
+        else if (e.Key == Key.PageUp)
+        {
+            int index = _curLine - _linesPerPage;
+            if (index < 0)
+                index = 0;
+            ScrollToIndex(index);
+        } 
+        // next page
+        else if (e.Key == Key.PageDown)
+        {
+            int index = _curLine + _linesPerPage;
+            if (index > _loadedText.LinesCount - _linesPerPage)
+                index = (int)(_loadedText.LinesCount - _linesPerPage);
+            ScrollToIndex(index);
         }
     }
 }

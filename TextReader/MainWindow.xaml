@@ -6,6 +6,7 @@
         xmlns:local="clr-namespace:TextReader"
         mc:Ignorable="d"
         Title="MainWindow" Height="450" Width="800">
+
     <DockPanel>
 
         <!-- Top toolbar -->

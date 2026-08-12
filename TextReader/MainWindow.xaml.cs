@@ -20,13 +20,31 @@ namespace TextReader;
 public partial class MainWindow : Window
 {
     private ITextInput _textInput;
-    
+
     public MainWindow()
     {
         InitializeComponent();
         _textInput = new FileTextInput("../../../Data/book.txt");
         Reader.Load(_textInput);
+
+        PreviewKeyDown += MainWindow_PreviewKeyDown;
     }
+
+    private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
+        {
+            HandleCtrlS();
+            e.Handled = true;
+        }
+    }
+
+    private void HandleCtrlS()
+    {
+
+    }
+    
+    // Buttons
 
     private void LoadButton_Click(object sender, RoutedEventArgs e)
     {
@@ -63,6 +81,6 @@ public partial class MainWindow : Window
     
     private void SearchButton_Click(object sender, RoutedEventArgs e)
     {
-        Reader.ShowSearchBox();
+        Reader.ToggleSearchBox();
     }
 }

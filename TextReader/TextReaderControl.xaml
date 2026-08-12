@@ -6,6 +6,11 @@
              xmlns:local="clr-namespace:TextReader"
              mc:Ignorable="d"
              d:DesignHeight="300" d:DesignWidth="300">
+    
+    <UserControl.InputBindings>
+        <KeyBinding Key="F" Modifiers="Ctrl" Command="{Binding OpenSearchCommand}" />
+    </UserControl.InputBindings>
+    
     <Grid>
 
         <Grid.RowDefinitions>
