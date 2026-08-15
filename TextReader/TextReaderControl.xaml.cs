@@ -13,9 +13,12 @@ namespace TextReader;
 public partial class TextReaderControl : UserControl
 {
     public bool searchBoxVisible = false;
-    
+    private bool _showLineNumbers = true;
+
     const double DefaultFontSize = 14;
-    const double XOffset = 10;
+    const double LineNumberMargin = 50;
+    const double XOffset = 60;
+    const double XOffsetNoLineNumbers = 10;
     const double YOffsetTop = 10;
     private double _lineHeight;
     private int _linesPerPage;
@@ -108,13 +111,26 @@ public partial class TextReaderControl : UserControl
         {
             RenderHighlights(dc);
 
+            double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
+
             for (int i = 0, bufferI = _curLine - _bufferStartIndex;
                  i < _linesPerPage && bufferI < _curBufferSize;
                  i++, bufferI++)
             {
-                var formattedText = CreateFormattedText(_buffer[bufferI]);
                 double yPos = YOffsetTop + i * _lineHeight;
-                dc.DrawText(formattedText, new Point(XOffset, yPos));
+
+                // Render line number
+                if (_showLineNumbers)
+                {
+                    int lineNumber = _curLine + i + 1;
+                    var lineNumberText = CreateFormattedText(lineNumber.ToString());
+                    lineNumberText.SetForegroundBrush(Brushes.Gray);
+                    dc.DrawText(lineNumberText, new Point(10, yPos));
+                }
+
+                // Render line content
+                var formattedText = CreateFormattedText(_buffer[bufferI]);
+                dc.DrawText(formattedText, new Point(xOffset, yPos));
             }
         }
     }
@@ -123,6 +139,8 @@ public partial class TextReaderControl : UserControl
     {
         // Render selection
         RenderSelection(dc);
+
+        double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
 
         // Render search highlights
         foreach ((int lineIndex, List<long> lineOffsets) in _searchHighlights)
@@ -140,7 +158,7 @@ public partial class TextReaderControl : UserControl
                 string textBefore = line.Substring(0, (int)lineOffset);
                 var leftPadding = CreateFormattedText(textBefore).WidthIncludingTrailingWhitespace;
                 var rect = new Rect(
-                    XOffset + leftPadding,
+                    xOffset + leftPadding,
                     YOffsetTop + relativeIndex * _lineHeight,
                     _searchHighlightWidth,
                     _lineHeight);
@@ -157,6 +175,8 @@ public partial class TextReaderControl : UserControl
     {
         if (_selectionStartPos == null || _selectionEndPos == null)
             return;
+
+        double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
 
         var start = _selectionStartPos.Value;
         var end = _selectionEndPos.Value;
@@ -195,7 +215,7 @@ public partial class TextReaderControl : UserControl
             var selectionWidth = CreateFormattedText(selectedText).WidthIncludingTrailingWhitespace;
 
             var rect = new Rect(
-                XOffset + leftPadding,
+                xOffset + leftPadding,
                 YOffsetTop + relativeIndex * _lineHeight,
                 selectionWidth,
                 _lineHeight);
@@ -302,6 +322,12 @@ public partial class TextReaderControl : UserControl
             HideSearchBox();
         }
     }
+
+    public void ToggleLineNumbers()
+    {
+        _showLineNumbers = !_showLineNumbers;
+        RenderVisibleLines();
+    }
     
     public void ShowSearchBox()
     {
@@ -356,6 +382,24 @@ public partial class TextReaderControl : UserControl
         GoToNextSearchResult();
     }
 
+    private void SearchTextBox_OnKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            string word = SearchTextBox.Text;
+            LoadWordSearchData(word);
+            GoToCurSearchResult();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            HideSearchBox();
+            ClearSearchResults();
+            TextReaderCanvas.Focus();
+            e.Handled = true;
+        }
+    }
+
 
     // Mouse Selection
 
@@ -404,7 +448,8 @@ public partial class TextReaderControl : UserControl
         string line = _buffer[bufferIndex];
 
         // Calculate line offset from X position
-        double targetX = point.X - XOffset;
+        double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
+        double targetX = point.X - xOffset;
         int offset = 0;
 
         for (int i = 0; i <= line.Length; i++)
@@ -514,6 +559,12 @@ public partial class TextReaderControl : UserControl
             ToggleSearchBox();
             e.Handled = true;
         }
+        // toggle line numbers
+        else if (e.Key == Key.L && (Keyboard.Modifiers & ModifierKeys.Control) == ModifierKeys.Control)
+        {
+            ToggleLineNumbers();
+            e.Handled = true;
+        }
         // prev/next search res
         else if (e.Key == Key.F3)
         {
@@ -532,13 +583,13 @@ public partial class TextReaderControl : UserControl
         {
             ScrollToIndex(0);
             e.Handled = true;
-        } 
+        }
         // end of document
         else if (e.Key == Key.End)
         {
             ScrollToIndex((int)(_loadedText.LinesCount - _linesPerPage));
             e.Handled = true;
-        } 
+        }
         // prev page
         else if (e.Key == Key.PageUp)
         {
@@ -547,7 +598,7 @@ public partial class TextReaderControl : UserControl
                 index = 0;
             ScrollToIndex(index);
             e.Handled = true;
-        } 
+        }
         // next page
         else if (e.Key == Key.PageDown)
         {

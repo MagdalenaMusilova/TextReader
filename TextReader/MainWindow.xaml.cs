@@ -34,19 +34,12 @@ public partial class MainWindow : Window
     {
         if (e.Key == Key.S && Keyboard.Modifiers == ModifierKeys.Control)
         {
-            HandleCtrlS();
+            SaveFileProcess();
             e.Handled = true;
         }
     }
 
-    private void HandleCtrlS()
-    {
-
-    }
-    
-    // Buttons
-
-    private void LoadButton_Click(object sender, RoutedEventArgs e)
+    private void LoadFileProcess()
     {
         var dialog = new LoadOptionsDialog { Owner = this };
         if (dialog.ShowDialog() == true && dialog.SelectedTextInput != null)
@@ -55,8 +48,8 @@ public partial class MainWindow : Window
             Reader.Load(_textInput);
         }
     }
-    
-    private async void SaveButton_Click(object sender, RoutedEventArgs e)
+
+    private async Task SaveFileProcess()
     {
         var saveFileDialog = new SaveFileDialog
         {
@@ -77,6 +70,18 @@ public partial class MainWindow : Window
                 MessageBox.Show($"Error saving file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
+    }
+    
+    // Buttons
+    
+    private void LoadButton_Click(object sender, RoutedEventArgs e)
+    {
+        LoadFileProcess();
+    }
+    
+    private async void SaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        await SaveFileProcess();
     }
     
     private void SearchButton_Click(object sender, RoutedEventArgs e)
