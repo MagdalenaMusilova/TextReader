@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:TextReader"
         mc:Ignorable="d"
-        Title="MainWindow" Height="450" Width="800">
+        Title="Text Reader" Height="450" Width="800">
 
     <DockPanel>
 
