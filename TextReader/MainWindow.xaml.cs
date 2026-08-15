@@ -63,13 +63,31 @@ public partial class MainWindow : Window
             try
             {
                 await _textInput.SaveToFileAsync(saveFileDialog.FileName);
-                MessageBox.Show("File saved successfully!", "Success", MessageBoxButton.OK, MessageBoxImage.Information);
+                await ShowSuccessNotification("File saved successfully!");
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                await ShowErrorNotification($"Error saving file: {ex.Message}");
             }
         }
+    }
+
+    private async Task ShowErrorNotification(string message)
+    {
+        ErrorNotificationText.Text = message;
+        ErrorNotification.Visibility = Visibility.Visible;
+        await Task.Delay(3000);
+        ErrorNotification.Visibility = Visibility.Collapsed;
+    }
+
+    private async Task ShowSuccessNotification(string message)
+    {
+        ErrorNotificationText.Text = message;
+        ErrorNotification.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(46, 125, 50)); // Green
+        ErrorNotification.Visibility = Visibility.Visible;
+        await Task.Delay(2000);
+        ErrorNotification.Visibility = Visibility.Collapsed;
+        ErrorNotification.Background = new SolidColorBrush(System.Windows.Media.Color.FromRgb(211, 47, 47)); // Reset to red
     }
     
     // Buttons

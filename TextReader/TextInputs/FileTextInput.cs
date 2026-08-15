@@ -18,11 +18,33 @@ public class FileTextInput : ITextInput
 
     public FileTextInput(string filePath, long bytePosition = 0)
     {
+        if (string.IsNullOrWhiteSpace(filePath))
+            throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+
+        if (!File.Exists(filePath))
+            throw new FileNotFoundException($"The file '{filePath}' does not exist.", filePath);
+
         _filePath = filePath;
-        _fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-        _length = _fileStream.Length;
-        Seek(bytePosition);
-        DataReadyEvent?.Invoke(this, EventArgs.Empty);
+
+        try
+        {
+            _fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            _length = _fileStream.Length;
+
+            if (_length == 0)
+                throw new InvalidDataException($"The file '{filePath}' is empty.");
+
+            Seek(bytePosition);
+            DataReadyEvent?.Invoke(this, EventArgs.Empty);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new UnauthorizedAccessException($"Access denied to file '{filePath}'. Check file permissions.", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new IOException($"Unable to read file '{filePath}'. The file may be corrupted or in use by another process.", ex);
+        }
     }
 
     ~FileTextInput()
@@ -66,10 +88,31 @@ public class FileTextInput : ITextInput
 
     public async Task SaveToFileAsync(string destFileName)
     {
-        await using var source = File.OpenRead(_filePath);
-        await using var destination = File.Create(destFileName);
+        if (string.IsNullOrWhiteSpace(destFileName))
+            throw new ArgumentException("Destination file path cannot be null or empty.", nameof(destFileName));
 
-        await source.CopyToAsync(destination);
+        try
+        {
+            // Ensure the directory exists
+            var directory = Path.GetDirectoryName(destFileName);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            await using var source = File.OpenRead(_filePath);
+            await using var destination = File.Create(destFileName);
+
+            await source.CopyToAsync(destination);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            throw new UnauthorizedAccessException($"Access denied when saving to '{destFileName}'. Check file permissions.", ex);
+        }
+        catch (IOException ex)
+        {
+            throw new IOException($"Unable to save file to '{destFileName}'. The path may be invalid or the disk may be full.", ex);
+        }
     }
 
     public void Close()

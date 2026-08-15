@@ -33,7 +33,7 @@ public partial class LoadOptionsDialog : Window
             WebPanel.Visibility = Visibility.Visible;
     }
 
-    private void LoadRandomText_Click(object sender, RoutedEventArgs e)
+    private async void LoadRandomText_Click(object sender, RoutedEventArgs e)
     {
         if (int.TryParse(RandomTextSizeInput.Text, out int size) && size > 0)
         {
@@ -43,11 +43,11 @@ public partial class LoadOptionsDialog : Window
         }
         else
         {
-            MessageBox.Show("Please enter a valid positive number for sentences.", "Invalid Input", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await ShowErrorNotification("Please enter a valid positive number for sentences.");
         }
     }
 
-    private void LoadFromFile_Click(object sender, RoutedEventArgs e)
+    private async void LoadFromFile_Click(object sender, RoutedEventArgs e)
     {
         var openFileDialog = new OpenFileDialog
         {
@@ -65,16 +65,16 @@ public partial class LoadOptionsDialog : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error loading file: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                await ShowErrorNotification($"Error loading file: {ex.Message}");
             }
         }
     }
 
-    private void LoadFromWeb_Click(object sender, RoutedEventArgs e)
+    private async void LoadFromWeb_Click(object sender, RoutedEventArgs e)
     {
         if (string.IsNullOrWhiteSpace(WebUrlInput.Text))
         {
-            MessageBox.Show("Please enter a URL.", "Invalid Input", MessageBoxButton.OK, MessageBoxImage.Warning);
+            await ShowErrorNotification("Please enter a URL.");
             return;
         }
 
@@ -86,7 +86,15 @@ public partial class LoadOptionsDialog : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Error loading from web: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            await ShowErrorNotification($"Error loading from web: {ex.Message}");
         }
+    }
+
+    private async Task ShowErrorNotification(string message)
+    {
+        ErrorNotificationText.Text = message;
+        ErrorNotification.Visibility = Visibility.Visible;
+        await Task.Delay(3000);
+        ErrorNotification.Visibility = Visibility.Collapsed;
     }
 }

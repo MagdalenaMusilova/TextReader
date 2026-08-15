@@ -7,26 +7,53 @@
         mc:Ignorable="d"
         Title="Text Reader" Height="450" Width="800">
 
-    <DockPanel>
+    <Grid>
+        <DockPanel>
 
-        <!-- Top toolbar -->
-        <ToolBar DockPanel.Dock="Top">
+            <!-- Top toolbar -->
+            <ToolBar DockPanel.Dock="Top">
 
-            <Button Content="Load"
-                    Click="LoadButton_Click"/>
+                <Button Content="Load"
+                        Click="LoadButton_Click"/>
 
-            <Button Content="Save"
-                    Click="SaveButton_Click" />
+                <Button Content="Save"
+                        Click="SaveButton_Click" />
 
-            <Separator/>
+                <Separator/>
 
-            <Button Content="Search"
-                    Click="SearchButton_Click" />
+                <Button Content="Search"
+                        Click="SearchButton_Click" />
 
-        </ToolBar>
+            </ToolBar>
 
-        <local:TextReaderControl x:Name="Reader"/>
+            <local:TextReaderControl x:Name="Reader"/>
 
-    </DockPanel>
+        </DockPanel>
+
+        <!-- Error Notification Popup -->
+        <Border x:Name="ErrorNotification"
+                Background="#D32F2F"
+                CornerRadius="4"
+                Padding="16,10"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Bottom"
+                Margin="0,0,0,40"
+                Visibility="Collapsed"
+                MaxWidth="600">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="⚠"
+                           Foreground="White"
+                           FontSize="16"
+                           Margin="0,0,8,0"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="ErrorNotificationText"
+                           Text="An error occurred"
+                           Foreground="White"
+                           FontSize="13"
+                           TextWrapping="Wrap"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
 
 </Window>

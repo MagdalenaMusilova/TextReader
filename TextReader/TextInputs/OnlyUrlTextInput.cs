@@ -10,7 +10,10 @@ public class OnlyUrlTextInput : ITextInput
 
     private const int CHUNK_SIZE = 1024 * 10; // 10KB 
     
-    private static readonly HttpClient HttpClient = new HttpClient();
+    private static readonly HttpClient HttpClient = new HttpClient
+    {
+        Timeout = TimeSpan.FromSeconds(30)
+    };
     
     private string _url;
     private Encoding _encoding;
@@ -132,24 +135,42 @@ public class OnlyUrlTextInput : ITextInput
     
     private void FetchChunkFromUrl(long index)
     {
-        long chunkStartIndex = (index / CHUNK_SIZE) * CHUNK_SIZE;
-    
-        var request = new HttpRequestMessage(HttpMethod.Get, _url);
-        request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(chunkStartIndex, chunkStartIndex + CHUNK_SIZE);
-    
-        using var response = HttpClient
-            .SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
-            .GetAwaiter()
-            .GetResult();
+        try
+        {
+            long chunkStartIndex = (index / CHUNK_SIZE) * CHUNK_SIZE;
 
-        response.EnsureSuccessStatusCode();
+            var request = new HttpRequestMessage(HttpMethod.Get, _url);
+            request.Headers.Range = new System.Net.Http.Headers.RangeHeaderValue(chunkStartIndex, chunkStartIndex + CHUNK_SIZE);
 
-        var chunk = response.Content
-            .ReadAsByteArrayAsync()
-            .GetAwaiter()
-            .GetResult();
+            using var response = HttpClient
+                .SendAsync(request, HttpCompletionOption.ResponseHeadersRead)
+                .GetAwaiter()
+                .GetResult();
 
-        _chunkCache[chunkStartIndex] = _encoding.GetString(chunk);
+            if (!response.IsSuccessStatusCode)
+            {
+                throw new HttpRequestException($"Failed to fetch chunk. Server returned error {(int)response.StatusCode} ({response.StatusCode}).");
+            }
+
+            var chunk = response.Content
+                .ReadAsByteArrayAsync()
+                .GetAwaiter()
+                .GetResult();
+
+            _chunkCache[chunkStartIndex] = _encoding.GetString(chunk);
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new HttpRequestException($"Failed to fetch data chunk from '{_url}'. {ex.Message}", ex);
+        }
+        catch (TaskCanceledException ex)
+        {
+            throw new TimeoutException($"Request to '{_url}' timed out while fetching data chunk.", ex);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Unexpected error while fetching data from '{_url}'.", ex);
+        }
     }
 
     public void Dispose()
