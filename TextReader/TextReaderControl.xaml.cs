@@ -13,7 +13,7 @@ namespace TextReader;
 public partial class TextReaderControl : UserControl
 {
     public bool searchBoxVisible = false;
-    private bool _showLineNumbers = true;
+    private bool _showLineNumbers = false;
 
     const double DefaultFontSize = 14;
     const double LineNumberMargin = 50;
@@ -405,6 +405,20 @@ public partial class TextReaderControl : UserControl
 
     private void Canvas_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        // Check for double-click on the left side to toggle line numbers
+        if (e.ClickCount == 2)
+        {
+            Point position = e.GetPosition(TextReaderCanvas);
+            double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
+
+            if (position.X < xOffset)
+            {
+                ToggleLineNumbers();
+                e.Handled = true;
+                return;
+            }
+        }
+
         TextReaderCanvas.Focus();
         _isSelecting = true;
         _selectionStart = e.GetPosition(TextReaderCanvas);
