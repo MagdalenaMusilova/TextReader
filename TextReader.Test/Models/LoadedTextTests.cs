@@ -154,8 +154,8 @@ public class LoadedTextTests : IDisposable
         // Index 7 should be the start of "Line 2"
         var position = loadedText.IndexToWordPosition(7);
 
-        Assert.Equal(1, position.lineIndex);
-        Assert.Equal(0, position.lineOffset);
+        Assert.Equal(1, position.LineIndex);
+        Assert.Equal(0, position.CharacterOffset);
     }
 
     [Fact]
@@ -170,8 +170,8 @@ public class LoadedTextTests : IDisposable
         // Index 9 should be "n" in "Line 2"
         var position = loadedText.IndexToWordPosition(9);
 
-        Assert.Equal(1, position.lineIndex);
-        Assert.Equal(2, position.lineOffset);
+        Assert.Equal(1, position.LineIndex);
+        Assert.Equal(2, position.CharacterOffset);
     }
 
     [Fact]
@@ -186,9 +186,9 @@ public class LoadedTextTests : IDisposable
         var results = loadedText.Search("Line");
 
         Assert.Equal(3, results.Count);
-        Assert.Equal(0, results[0].lineIndex);
-        Assert.Equal(1, results[1].lineIndex);
-        Assert.Equal(2, results[2].lineIndex);
+        Assert.Equal(0, results[0].LineIndex);
+        Assert.Equal(1, results[1].LineIndex);
+        Assert.Equal(2, results[2].LineIndex);
     }
 
     [Fact]

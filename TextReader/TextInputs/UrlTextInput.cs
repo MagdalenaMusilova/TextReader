@@ -25,7 +25,7 @@ public class UrlTextInput : ITextInput
     private bool _supportsPartialRequests;
     private long _position; // needed to ensure that switching from OnlyUrlTextInput to FileTextInput won't change position. Race condition - position is updated only after reading is finished. So change source while reading -> wrong position
 
-    public bool EOF => _usedInput.EOF;
+    public bool IsEndOfFile => _usedInput.IsEndOfFile;
     public long Position => _usedInput.Position;
     public long ByteLength => _usedInput.ByteLength;
 
@@ -167,9 +167,9 @@ public class UrlTextInput : ITextInput
         return _usedInput.Read();
     }
 
-    public int Peak()
+    public int Peek()
     {
-        return _usedInput.Peak();
+        return _usedInput.Peek();
     }
 
 

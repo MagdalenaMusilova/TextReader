@@ -15,7 +15,7 @@ public class OnlyUrlTextInputTests
 
         Assert.Equal(TestLength, input.ByteLength);
         Assert.Equal(0, input.Position);
-        Assert.False(input.EOF);
+        Assert.False(input.IsEndOfFile);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class OnlyUrlTextInputTests
         var input = new OnlyUrlTextInput(TestUrl, TestLength, _testEncoding);
 
         input.Seek(TestLength);
-        Assert.True(input.EOF);
+        Assert.True(input.IsEndOfFile);
     }
 
     [Fact]
@@ -42,7 +42,7 @@ public class OnlyUrlTextInputTests
         var input = new OnlyUrlTextInput(TestUrl, TestLength, _testEncoding);
 
         input.Seek(TestLength - 1);
-        Assert.False(input.EOF);
+        Assert.False(input.IsEndOfFile);
     }
 
     [Fact]

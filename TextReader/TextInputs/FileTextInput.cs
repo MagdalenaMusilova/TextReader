@@ -12,7 +12,7 @@ public class FileTextInput : ITextInput
     private long _length;
 
     public event EventHandler? DataReadyEvent;
-    public bool EOF => Position >= _length;
+    public bool IsEndOfFile => Position >= _length;
     public long Position => _fileStream.Position;
     public long ByteLength => _length;
 
@@ -67,7 +67,7 @@ public class FileTextInput : ITextInput
         return _fileStream.ReadByte();
     }
 
-    public int Peak()
+    public int Peek()
     {
         int b = _fileStream.ReadByte();
         if (b != -1)

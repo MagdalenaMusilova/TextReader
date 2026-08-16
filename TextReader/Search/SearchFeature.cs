@@ -3,74 +3,107 @@ using TextReader.TextInputs;
 
 namespace TextReader;
 
+/// <summary>
+/// Provides text search functionality with caching optimization
+/// </summary>
 public class SearchFeature
 {
-    private Dictionary<string, List<int>> cache = new Dictionary<string, List<int>>();
-    private ITextInput _input;
-    
+    private readonly Dictionary<string, List<int>> _searchCache = new();
+    private readonly ITextInput _input;
+
     public SearchFeature(ITextInput input)
     {
         _input = input;
     }
-    
-    public List<int> Search(string word)
+
+    /// <summary>
+    /// Searches for all occurrences of a word in the text (case-insensitive)
+    /// Uses cached results and substring optimization when possible
+    /// </summary>
+    /// <param name="searchWord">Word to search for</param>
+    /// <returns>List of byte indices where the word was found</returns>
+    public List<int> Search(string searchWord)
     {
-        word = word.ToLower();
-        if (cache.ContainsKey(word))
+        searchWord = searchWord.ToLower();
+
+        // Return cached result if available
+        if (_searchCache.ContainsKey(searchWord))
         {
-            return cache[word];
+            return _searchCache[searchWord];
         }
-        
-        // try to help with the search from previous searches
-        for (int i = word.Length - 1; i >= 1; i--)
+
+        // Optimization: Check if we have cached results for any prefix of this word
+        // If we searched for "test" before, we can narrow down results when searching "testing"
+        for (int i = searchWord.Length - 1; i >= 1; i--)
         {
-            string subWord = word.Substring(0, i);
-            if (cache.ContainsKey(subWord))
+            string prefixWord = searchWord.Substring(0, i);
+            if (_searchCache.ContainsKey(prefixWord))
             {
-                return FindAllOccurencesFromPossibilities(word, cache[subWord]);
+                return FindAllOccurrencesFromCandidates(searchWord, _searchCache[prefixWord]);
             }
         }
-        
-        return FindAllOccurencesRaw(word);
+
+        // No optimization possible, perform full text search
+        return FindAllOccurrencesRaw(searchWord);
     }
     
-    private List<int> FindAllOccurencesFromPossibilities(string word, List<int> possibilities)
+    /// <summary>
+    /// Searches for word occurrences by checking only candidate positions from a previous search
+    /// </summary>
+    /// <param name="searchWord">Word to search for</param>
+    /// <param name="candidatePositions">Byte positions to check (from a prefix search)</param>
+    /// <returns>List of byte indices where the word was found</returns>
+    private List<int> FindAllOccurrencesFromCandidates(string searchWord, List<int> candidatePositions)
     {
-        cache.Add(word, new List<int>());
-        foreach (var index in possibilities)
+        _searchCache.Add(searchWord, new List<int>());
+
+        foreach (var byteIndex in candidatePositions)
         {
-            _input.Seek(index);
-            if (IsWordAtPosition(_input, word))
+            _input.Seek(byteIndex);
+            if (IsWordAtPosition(_input, searchWord))
             {
-                cache[word].Add(index);
+                _searchCache[searchWord].Add(byteIndex);
             }
         }
-        return cache[word];
+
+        return _searchCache[searchWord];
     }
 
-    private List<int> FindAllOccurencesRaw(string word)
+    /// <summary>
+    /// Performs a full text search by checking every position in the input
+    /// </summary>
+    /// <param name="searchWord">Word to search for</param>
+    /// <returns>List of byte indices where the word was found</returns>
+    private List<int> FindAllOccurrencesRaw(string searchWord)
     {
-        cache[word] = new List<int>();
-        int index = 0;
-        while (!_input.EOF)
+        _searchCache[searchWord] = new List<int>();
+        int byteIndex = 0;
+
+        while (!_input.IsEndOfFile)
         {
-            _input.Seek(index);
-            if (IsWordAtPosition(_input, word))
+            _input.Seek(byteIndex);
+            if (IsWordAtPosition(_input, searchWord))
             {
-                cache[word].Add(index);
+                _searchCache[searchWord].Add(byteIndex);
             }
-            index++;
+            byteIndex++;
         }
-        return cache[word];
+
+        return _searchCache[searchWord];
     }
 
-    private bool IsWordAtPosition(ITextInput input, string word)
+    /// <summary>
+    /// Checks if the specified word exists at the current input position (case-insensitive)
+    /// </summary>
+    /// <param name="input">Text input to read from</param>
+    /// <param name="searchWord">Word to match (should be lowercase)</param>
+    /// <returns>True if the word matches at the current position</returns>
+    private bool IsWordAtPosition(ITextInput input, string searchWord)
     {
-        int readByte;
-        for (int i = 0; i < word.Length; i++)
+        for (int i = 0; i < searchWord.Length; i++)
         {
-            readByte = input.Read();
-            if (readByte != word[i] && readByte != CharToUpperCase(word[i]))
+            int readByte = input.Read();
+            if (readByte != searchWord[i] && readByte != CharToUpperCase(searchWord[i]))
             {
                 return false;
             }
@@ -78,6 +111,11 @@ public class SearchFeature
         return true;
     }
 
+    /// <summary>
+    /// Converts a lowercase character to uppercase (simple ASCII conversion)
+    /// </summary>
+    /// <param name="character">Character code to convert</param>
+    /// <returns>Uppercase character code if lowercase letter, otherwise unchanged</returns>
     private int CharToUpperCase(int character)
     {
         if (character >= 'a' && character <= 'z')

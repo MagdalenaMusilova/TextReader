@@ -10,7 +10,6 @@ public class FileTextInputTests : IDisposable
     public FileTextInputTests()
     {
         _testFilePath = Path.GetTempFileName();
-        // Use FileStream to write bytes directly to avoid newline conversion
         using var fs = new FileStream(_testFilePath, FileMode.Create, FileAccess.Write);
         byte[] bytes = Encoding.UTF8.GetBytes(_testContent);
         fs.Write(bytes);
@@ -29,7 +28,7 @@ public class FileTextInputTests : IDisposable
     {
         using var input = new FileTextInput(_testFilePath);
 
-        Assert.False(input.EOF);
+        Assert.False(input.IsEndOfFile);
         Assert.Equal(_testContent.Length, input.ByteLength);
         Assert.Equal(0, input.Position);
     }
@@ -85,7 +84,7 @@ public class FileTextInputTests : IDisposable
         using var input = new FileTextInput(_testFilePath);
 
         input.Seek(input.ByteLength);
-        Assert.True(input.EOF);
+        Assert.True(input.IsEndOfFile);
     }
 
     [Fact]
@@ -108,7 +107,7 @@ public class FileTextInputTests : IDisposable
 
         var result = input.Read(input.ByteLength);
         Assert.Equal(_testContent, result);
-        Assert.True(input.EOF);
+        Assert.True(input.IsEndOfFile);
     }
 
     [Fact]

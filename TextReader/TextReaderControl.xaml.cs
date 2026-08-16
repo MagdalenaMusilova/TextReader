@@ -10,46 +10,53 @@ using Color = System.Drawing.Color;
 
 namespace TextReader;
 
+/// <summary>
+/// Custom text reader control with search, selection, and line numbering capabilities
+/// </summary>
 public partial class TextReaderControl : UserControl
 {
-    public bool searchBoxVisible = false;
-    private bool _showLineNumbers = false;
+    // Layout Constants
+    private const double DefaultFontSize = 14;
+    private const double LineNumberMargin = 50;
+    private const double TextOffsetWithLineNumbers = 60;
+    private const double TextOffsetWithoutLineNumbers = 10;
+    private const double TopMargin = 10;
+    private const int BufferCapacity = 128; // Number of lines to buffer for smooth scrolling
 
-    const double DefaultFontSize = 14;
-    const double LineNumberMargin = 50;
-    const double XOffset = 60;
-    const double XOffsetNoLineNumbers = 10;
-    const double YOffsetTop = 10;
+    // UI State
+    private bool _searchBoxVisible;
+    private bool _showLineNumbers;
+
+    // Rendering
     private double _lineHeight;
     private int _linesPerPage;
-    private const int bufferMaxSize = 128;
-
-    private static readonly SolidColorBrush _search_highlight_color = Brushes.Yellow;
-    private static readonly SolidColorBrush _search_results_color = Brushes.LightGray;
-
     private readonly DrawingVisual _drawingVisual;
-    
+
+    // Search Highlighting Colors
+    private static readonly SolidColorBrush ActiveSearchHighlightColor = Brushes.Yellow;
+    private static readonly SolidColorBrush InactiveSearchHighlightColor = Brushes.LightGray;
+    private static readonly SolidColorBrush SelectionColor = new SolidColorBrush(System.Windows.Media.Color.FromArgb(100, 0, 120, 215));
+
+    // Text Data
     private LoadedText _loadedText;
-    private bool _textInputAssigned = false;
-    private readonly string[] _buffer = new string[bufferMaxSize];
-    private int _curBufferSize;
-    private int _bufferStartIndex = 0;
-    private int _curLine = 0;
-    
+    private bool _isTextLoaded;
+    private readonly string[] _lineBuffer = new string[BufferCapacity];
+    private int _currentBufferLineCount;
+    private int _bufferStartLineIndex;
+    private int _currentTopLineIndex;
+
+    // Search State
     private List<WordPosition> _searchResults = new();
-    private int _searchIndex = 0;
-    
-    private Dictionary<int, List<long>> _searchHighlights = new();
-    private double _searchHighlightWidth = 0;
+    private int _currentSearchResultIndex;
+    private Dictionary<int, List<int>> _searchHighlightsByLine = new();
+    private double _searchHighlightWidth;
 
-    // Selection
-    private bool _isSelecting = false;
-    private Point? _selectionStart = null;
-    private Point? _selectionEnd = null;
-    private (int line, int offset)? _selectionStartPos = null;
-    private (int line, int offset)? _selectionEndPos = null;
-
-    private static readonly SolidColorBrush _selection_color = new SolidColorBrush(System.Windows.Media.Color.FromArgb(100, 0, 120, 215));
+    // Selection State
+    private bool _isSelecting;
+    private Point? _selectionStart;
+    private Point? _selectionEnd;
+    private (int line, int offset)? _selectionStartPos;
+    private (int line, int offset)? _selectionEndPos;
 
     public TextReaderControl()
     {
@@ -75,7 +82,7 @@ public partial class TextReaderControl : UserControl
     protected override void OnRenderSizeChanged(SizeChangedInfo sizeInfo)
     {
         base.OnRenderSizeChanged(sizeInfo);
-        _linesPerPage = (int)Math.Floor((ActualHeight - YOffsetTop) / _lineHeight);
+        _linesPerPage = (int)Math.Floor((ActualHeight - TopMargin) / _lineHeight);
         RerenderUCElements();
     }
 
@@ -84,7 +91,7 @@ public partial class TextReaderControl : UserControl
         Clear();
         _loadedText = new LoadedText(textInput);
         _loadedText.FinishedLoadingEvent += (sender, args) => Dispatcher.Invoke(RerenderUCElements);
-        _textInputAssigned = true;
+        _isTextLoaded = true;
 
         LoadBuffer(0);
         RerenderUCElements();
@@ -97,7 +104,7 @@ public partial class TextReaderControl : UserControl
 
     private void RerenderUCElements()
     {
-        if (_textInputAssigned)
+        if (_isTextLoaded)
         {
             ScrollBar.Maximum = _loadedText.LinesCount - _linesPerPage + 1;
             ScrollBar.UpdateLayout();
@@ -111,61 +118,64 @@ public partial class TextReaderControl : UserControl
         {
             RenderHighlights(dc);
 
-            double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
+            double xOffset = _showLineNumbers ? TextOffsetWithLineNumbers : TextOffsetWithoutLineNumbers;
 
-            for (int i = 0, bufferI = _curLine - _bufferStartIndex;
-                 i < _linesPerPage && bufferI < _curBufferSize;
+            for (int i = 0, bufferI = _currentTopLineIndex - _bufferStartLineIndex;
+                 i < _linesPerPage && bufferI < _currentBufferLineCount;
                  i++, bufferI++)
             {
-                double yPos = YOffsetTop + i * _lineHeight;
+                double yPos = TopMargin + i * _lineHeight;
 
                 // Render line number
                 if (_showLineNumbers)
                 {
-                    int lineNumber = _curLine + i + 1;
+                    int lineNumber = _currentTopLineIndex + i + 1;
                     var lineNumberText = CreateFormattedText(lineNumber.ToString());
                     lineNumberText.SetForegroundBrush(Brushes.Gray);
                     dc.DrawText(lineNumberText, new Point(10, yPos));
                 }
 
                 // Render line content
-                var formattedText = CreateFormattedText(_buffer[bufferI]);
+                var formattedText = CreateFormattedText(_lineBuffer[bufferI]);
                 dc.DrawText(formattedText, new Point(xOffset, yPos));
             }
         }
     }
 
+    /// <summary>
+    /// Renders selection and search highlights on the canvas
+    /// </summary>
     private void RenderHighlights(DrawingContext dc)
     {
-        // Render selection
+        // Render text selection
         RenderSelection(dc);
 
-        double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
+        double xOffset = _showLineNumbers ? TextOffsetWithLineNumbers : TextOffsetWithoutLineNumbers;
 
-        // Render search highlights
-        foreach ((int lineIndex, List<long> lineOffsets) in _searchHighlights)
+        // Render search result highlights
+        foreach ((int lineIndex, List<int> characterOffsets) in _searchHighlightsByLine)
         {
-            int relativeIndex = lineIndex - _curLine;
+            int relativeIndex = lineIndex - _currentTopLineIndex;
             if (relativeIndex < 0 || relativeIndex >= _linesPerPage)
             {
                 continue;
             }
 
-            int bufferIndex = lineIndex - _bufferStartIndex;
-            string line = _buffer[bufferIndex];
-            foreach (var lineOffset in lineOffsets)
+            int bufferIndex = lineIndex - _bufferStartLineIndex;
+            string line = _lineBuffer[bufferIndex];
+            foreach (var characterOffset in characterOffsets)
             {
-                string textBefore = line.Substring(0, (int)lineOffset);
+                string textBefore = line.Substring(0, characterOffset);
                 var leftPadding = CreateFormattedText(textBefore).WidthIncludingTrailingWhitespace;
                 var rect = new Rect(
                     xOffset + leftPadding,
-                    YOffsetTop + relativeIndex * _lineHeight,
+                    TopMargin + relativeIndex * _lineHeight,
                     _searchHighlightWidth,
                     _lineHeight);
-                var color = _searchResults[_searchIndex].lineIndex == lineIndex &&
-                            _searchResults[_searchIndex].lineOffset == lineOffset
-                    ? _search_highlight_color
-                    : _search_results_color;
+                var color = _searchResults[_currentSearchResultIndex].LineIndex == lineIndex &&
+                            _searchResults[_currentSearchResultIndex].CharacterOffset == characterOffset
+                    ? ActiveSearchHighlightColor
+                    : InactiveSearchHighlightColor;
                 dc.DrawRectangle(color, null, rect);
             }
         }
@@ -176,7 +186,7 @@ public partial class TextReaderControl : UserControl
         if (_selectionStartPos == null || _selectionEndPos == null)
             return;
 
-        double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
+        double xOffset = _showLineNumbers ? TextOffsetWithLineNumbers : TextOffsetWithoutLineNumbers;
 
         var start = _selectionStartPos.Value;
         var end = _selectionEndPos.Value;
@@ -190,15 +200,15 @@ public partial class TextReaderControl : UserControl
         // Render selection for each visible line
         for (int lineIndex = start.line; lineIndex <= end.line; lineIndex++)
         {
-            int relativeIndex = lineIndex - _curLine;
+            int relativeIndex = lineIndex - _currentTopLineIndex;
             if (relativeIndex < 0 || relativeIndex >= _linesPerPage)
                 continue;
 
-            int bufferIndex = lineIndex - _bufferStartIndex;
-            if (bufferIndex < 0 || bufferIndex >= _curBufferSize)
+            int bufferIndex = lineIndex - _bufferStartLineIndex;
+            if (bufferIndex < 0 || bufferIndex >= _currentBufferLineCount)
                 continue;
 
-            string line = _buffer[bufferIndex];
+            string line = _lineBuffer[bufferIndex];
 
             int startOffset = (lineIndex == start.line) ? start.offset : 0;
             int endOffset = (lineIndex == end.line) ? end.offset : line.Length;
@@ -216,11 +226,11 @@ public partial class TextReaderControl : UserControl
 
             var rect = new Rect(
                 xOffset + leftPadding,
-                YOffsetTop + relativeIndex * _lineHeight,
+                TopMargin + relativeIndex * _lineHeight,
                 selectionWidth,
                 _lineHeight);
 
-            dc.DrawRectangle(_selection_color, null, rect);
+            dc.DrawRectangle(SelectionColor, null, rect);
         }
     }
     
@@ -238,9 +248,9 @@ public partial class TextReaderControl : UserControl
 
     private void ScrollToIndex(int index)
     {
-        _curLine = index;
-        ScrollBar.Value = _curLine;
-        if (index <= _bufferStartIndex || index + _linesPerPage >= _bufferStartIndex + _curBufferSize)
+        _currentTopLineIndex = index;
+        ScrollBar.Value = _currentTopLineIndex;
+        if (index <= _bufferStartLineIndex || index + _linesPerPage >= _bufferStartLineIndex + _currentBufferLineCount)
         {
             LoadBuffer(index);
         }
@@ -249,71 +259,77 @@ public partial class TextReaderControl : UserControl
 
     private void LoadBuffer(int startIndex)
     {
-        _bufferStartIndex = startIndex;
-        _curBufferSize = _loadedText.GetLines(_bufferStartIndex, bufferMaxSize, _buffer);
+        _bufferStartLineIndex = startIndex;
+        _currentBufferLineCount = _loadedText.GetLines(_bufferStartLineIndex, BufferCapacity, _lineBuffer);
     }
     
+    /// <summary>
+    /// Loads and indexes search results for a given word
+    /// </summary>
     private void LoadWordSearchData(string word)
     {
         _searchResults.Clear();
-        _searchHighlights.Clear();
-        
+        _searchHighlightsByLine.Clear();
+
         _searchResults = _loadedText.Search(word);
         _searchHighlightWidth = CreateFormattedText(word).WidthIncludingTrailingWhitespace;
-        _searchIndex = 0;
-        
-        // add higlights
+        _currentSearchResultIndex = 0;
+
+        // Group search results by line for efficient rendering
         foreach (var searchResult in _searchResults)
         {
-            if (!_searchHighlights.ContainsKey(searchResult.lineIndex))
+            if (!_searchHighlightsByLine.ContainsKey(searchResult.LineIndex))
             {
-                _searchHighlights[searchResult.lineIndex] = new List<long>();
+                _searchHighlightsByLine[searchResult.LineIndex] = new List<int>();
             }
-            _searchHighlights[searchResult.lineIndex].Add(searchResult.lineOffset);
+            _searchHighlightsByLine[searchResult.LineIndex].Add(searchResult.CharacterOffset);
         }
     }
     
     private void ClearSearchResults()
     {
         _searchResults.Clear();
-        _searchHighlights.Clear();
+        _searchHighlightsByLine.Clear();
         RerenderUCElements();
     }
 
+    /// <summary>
+    /// Scrolls to and highlights the current search result
+    /// </summary>
     private void GoToCurSearchResult()
     {
-        SearchResultsIndexes.Text = $"{_searchIndex + 1}/{_searchResults.Count}";
+        SearchResultsIndexes.Text = $"{_currentSearchResultIndex + 1}/{_searchResults.Count}";
         if (_searchResults.Count > 0)
         {
-            ScrollToIndex(_searchResults[_searchIndex].lineIndex);
+            ScrollToIndex(_searchResults[_currentSearchResultIndex].LineIndex);
         }
         RerenderUCElements();
     }
     
     private void GoToNextSearchResult()
     {
-        _searchIndex++;
-        if (_searchIndex == _searchResults.Count)
+        _currentSearchResultIndex++;
+        if (_currentSearchResultIndex == _searchResults.Count)
         {
-            _searchIndex = 0;
+            _currentSearchResultIndex = 0;
         }
         GoToCurSearchResult();
     }
     
     private void GoToPrevSearchResult()
     {
-        _searchIndex--;
-        if (_searchIndex == -1)
+        _currentSearchResultIndex--;
+        if (_currentSearchResultIndex == -1)
         {
-            _searchIndex = _searchResults.Count - 1;
+            _currentSearchResultIndex = _searchResults.Count - 1;
         }        
         GoToCurSearchResult();
     }
 
     public void ToggleSearchBox()
     {
-        searchBoxVisible = !searchBoxVisible;
-        if (searchBoxVisible)
+        _searchBoxVisible = !_searchBoxVisible;
+        if (_searchBoxVisible)
         {
             ShowSearchBox();
         }
@@ -332,13 +348,13 @@ public partial class TextReaderControl : UserControl
     public void ShowSearchBox()
     {
         SearchBar.Visibility = Visibility.Visible;
-        searchBoxVisible = true;
+        _searchBoxVisible = true;
     }
     
     public void HideSearchBox()
     {
         SearchBar.Visibility = Visibility.Collapsed;
-        searchBoxVisible = false;
+        _searchBoxVisible = false;
     }
 
 
@@ -347,7 +363,7 @@ public partial class TextReaderControl : UserControl
     
     private void Scroll_OnScroll(object sender, ScrollEventArgs e)
     {
-        if ((int)ScrollBar.Value == _curLine)
+        if ((int)ScrollBar.Value == _currentTopLineIndex)
         {
             return;
         }
@@ -409,7 +425,7 @@ public partial class TextReaderControl : UserControl
         if (e.ClickCount == 2)
         {
             Point position = e.GetPosition(TextReaderCanvas);
-            double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
+            double xOffset = _showLineNumbers ? TextOffsetWithLineNumbers : TextOffsetWithoutLineNumbers;
 
             if (position.X < xOffset)
             {
@@ -451,18 +467,18 @@ public partial class TextReaderControl : UserControl
     private (int line, int offset) GetTextPositionFromPoint(Point point)
     {
         // Calculate line from Y position
-        int relativeLineIndex = (int)Math.Floor((point.Y - YOffsetTop) / _lineHeight);
+        int relativeLineIndex = (int)Math.Floor((point.Y - TopMargin) / _lineHeight);
         relativeLineIndex = Math.Max(0, Math.Min(relativeLineIndex, _linesPerPage - 1));
-        int lineIndex = _curLine + relativeLineIndex;
+        int lineIndex = _currentTopLineIndex + relativeLineIndex;
 
-        int bufferIndex = lineIndex - _bufferStartIndex;
-        if (bufferIndex < 0 || bufferIndex >= _curBufferSize)
+        int bufferIndex = lineIndex - _bufferStartLineIndex;
+        if (bufferIndex < 0 || bufferIndex >= _currentBufferLineCount)
             return (lineIndex, 0);
 
-        string line = _buffer[bufferIndex];
+        string line = _lineBuffer[bufferIndex];
 
         // Calculate line offset from X position
-        double xOffset = _showLineNumbers ? XOffset : XOffsetNoLineNumbers;
+        double xOffset = _showLineNumbers ? TextOffsetWithLineNumbers : TextOffsetWithoutLineNumbers;
         double targetX = point.X - xOffset;
         int offset = 0;
 
@@ -503,11 +519,11 @@ public partial class TextReaderControl : UserControl
 
         for (int lineIndex = start.line; lineIndex <= end.line; lineIndex++)
         {
-            int bufferIndex = lineIndex - _bufferStartIndex;
-            if (bufferIndex < 0 || bufferIndex >= _curBufferSize)
+            int bufferIndex = lineIndex - _bufferStartLineIndex;
+            if (bufferIndex < 0 || bufferIndex >= _currentBufferLineCount)
                 continue;
 
-            string line = _buffer[bufferIndex];
+            string line = _lineBuffer[bufferIndex];
 
             int startOffset = (lineIndex == start.line) ? start.offset : 0;
             int endOffset = (lineIndex == end.line) ? end.offset : line.Length;
@@ -530,11 +546,11 @@ public partial class TextReaderControl : UserControl
     private void Canvas_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         int linesToScroll = -e.Delta / 40; // Delta is typically 120 per notch, scroll ~3 lines per notch
-        int newIndex = _curLine + linesToScroll;
+        int newIndex = _currentTopLineIndex + linesToScroll;
 
         newIndex = Math.Max(0, Math.Min(newIndex, (int)(_loadedText.LinesCount - _linesPerPage)));
 
-        if (newIndex != _curLine)
+        if (newIndex != _currentTopLineIndex)
         {
             ScrollToIndex(newIndex);
         }
@@ -607,7 +623,7 @@ public partial class TextReaderControl : UserControl
         // prev page
         else if (e.Key == Key.PageUp)
         {
-            int index = _curLine - _linesPerPage;
+            int index = _currentTopLineIndex - _linesPerPage;
             if (index < 0)
                 index = 0;
             ScrollToIndex(index);
@@ -616,7 +632,7 @@ public partial class TextReaderControl : UserControl
         // next page
         else if (e.Key == Key.PageDown)
         {
-            int index = _curLine + _linesPerPage;
+            int index = _currentTopLineIndex + _linesPerPage;
             if (index > _loadedText.LinesCount - _linesPerPage)
                 index = (int)(_loadedText.LinesCount - _linesPerPage);
             ScrollToIndex(index);

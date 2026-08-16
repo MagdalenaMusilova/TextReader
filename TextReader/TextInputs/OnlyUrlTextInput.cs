@@ -22,7 +22,7 @@ public class OnlyUrlTextInput : ITextInput
     private long _currentPosition = 0;
     private Dictionary<long, string> _chunkCache = new Dictionary<long, string>();
 
-    public bool EOF => _currentPosition >= _byteLength;
+    public bool IsEndOfFile => _currentPosition >= _byteLength;
     public long Position => _currentPosition;
     public long ByteLength => _byteLength;
 
@@ -65,7 +65,7 @@ public class OnlyUrlTextInput : ITextInput
 
     public int Read()
     {
-        if (EOF)
+        if (IsEndOfFile)
         {
             return -1;
         }
@@ -78,7 +78,7 @@ public class OnlyUrlTextInput : ITextInput
         return GetByteFromCache();
     }
 
-    public int Peak()
+    public int Peek()
     {
         var res = GetByteFromCache();
         _currentPosition--;

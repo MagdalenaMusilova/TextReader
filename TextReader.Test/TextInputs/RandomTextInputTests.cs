@@ -11,7 +11,7 @@ public class RandomTextInputTests
 
         Assert.True(input.ByteLength > 0);
         Assert.Equal(0, input.Position);
-        Assert.False(input.EOF);
+        Assert.False(input.IsEndOfFile);
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class RandomTextInputTests
         var input = new RandomTextInput(5);
 
         input.Seek(input.ByteLength);
-        Assert.True(input.EOF);
+        Assert.True(input.IsEndOfFile);
     }
 
     [Fact]

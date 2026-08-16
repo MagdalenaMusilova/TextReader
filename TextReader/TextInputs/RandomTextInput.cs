@@ -10,7 +10,7 @@ public class RandomTextInput : ITextInput
     private string _fullText;
     private long _curBytePosition = 0;
 
-    public bool EOF => _curBytePosition >= _fullText.Length;
+    public bool IsEndOfFile => _curBytePosition >= _fullText.Length;
     public long Position => _curBytePosition;
     public long ByteLength => _fullText.Length; //should be only 1B chars => string len == byte lenght 
 
@@ -38,14 +38,14 @@ public class RandomTextInput : ITextInput
 
     public int Read()
     {
-        if (EOF)
+        if (IsEndOfFile)
         {
             return -1;
         }
         return _fullText[(int)_curBytePosition++];
     }
 
-    public int Peak()
+    public int Peek()
     {
         return _fullText[(int)_curBytePosition];
     }

@@ -17,7 +17,7 @@ public class UrlTextInputTests
 
             Assert.True(input.ByteLength > 0);
             Assert.Equal(0, input.Position);
-            Assert.False(input.EOF);
+            Assert.False(input.IsEndOfFile);
         }
 
         [Fact]
@@ -68,10 +68,10 @@ public class UrlTextInputTests
             var input = new UrlTextInput(TestUrl);
             Thread.Sleep(100); // Allow initialization
 
-            Assert.False(input.EOF);
+            Assert.False(input.IsEndOfFile);
 
             input.Seek(input.ByteLength);
-            Assert.True(input.EOF);
+            Assert.True(input.IsEndOfFile);
         }
 
         [Fact]

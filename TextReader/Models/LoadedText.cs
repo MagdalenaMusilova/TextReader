@@ -3,56 +3,74 @@ using TextReader.TextInputs;
 
 namespace TextReader.Models;
 
+/// <summary>
+/// Manages loaded text content with line-based indexing and search functionality
+/// </summary>
 public class LoadedText
 {
-    private const int charsPerLine = 30;
+    private const int CharsPerLine = 30; // Used for initial line count estimation
 
+    /// <summary>
+    /// Event raised when line offset calculation is complete
+    /// </summary>
     public event EventHandler? FinishedLoadingEvent;
-    
-    private ITextInput _input;
-    private SearchFeature _searchFeature;
-    private List<long> _lineOffsets = new List<long>();    //todo needs to be changed into something that handles more than int.MaxValue elements 
-    private bool _lineOffsetsCalculated = false;
-    private int _linesCountGuess;
-    private int _linesCount;
-    
+
+    private readonly ITextInput _input;
+    private readonly SearchFeature _searchFeature;
+    private readonly List<int> _lineOffsets = new();
+    private bool _lineOffsetsCalculated;
+    private int _estimatedLineCount;
+    private int _actualLineCount;
+
     private NewLineType _newLineType;
     private int _newLineSize;
     private Func<ITextInput, bool> _isNextByteNewLine;
 
-    public long LinesCount => _lineOffsetsCalculated ? _linesCount : _linesCountGuess;
-    private long CurLinesCalculatedCount => _lineOffsets.Count;
+    /// <summary>
+    /// Total number of lines in the text (estimated until fully loaded)
+    /// </summary>
+    public int LinesCount => _lineOffsetsCalculated ? _actualLineCount : _estimatedLineCount;
+
+    /// <summary>
+    /// Number of lines that have been calculated so far
+    /// </summary>
+    private int CurrentLinesCalculatedCount => _lineOffsets.Count;
     
     
     public LoadedText(ITextInput input)
     {
         _input = input;
         _searchFeature = new SearchFeature(_input);
-        GuessNumberOfLines();
-        SetNewLineType();
+        EstimateLineCount();
+        DetectNewLineType();
         CalculateLineOffsets();
     }
-    
-    private void SetNewLineType()
+
+    /// <summary>
+    /// Detects the newline character type used in the text (CR, LF, or CRLF)
+    /// </summary>
+    private void DetectNewLineType()
     {
-        //todo use this to get the first new line
-        _newLineType = NewLineType.N;   // dummy value, in case there is no newline
+        // Default to LF (\n) if no newline is found
+        _newLineType = NewLineType.N;
 
         int readByte;
         while ((readByte = _input.Read()) != -1)
         {
-            // check if newline
+            // Check for carriage return
             if (readByte == '\r')
             {
                 int nextByte = _input.Read();
                 if (nextByte == '\n')
                 {
+                    // Windows-style CRLF
                     _newLineType = NewLineType.RN;
                     _newLineSize = 2;
                     break;
                 }
                 else
                 {
+                    // Mac-style CR
                     _newLineType = NewLineType.R;
                     _newLineSize = 1;
                     break;
@@ -60,6 +78,7 @@ public class LoadedText
             }
             else if (readByte == '\n')
             {
+                // Unix-style LF
                 _newLineType = NewLineType.N;
                 _newLineSize = 1;
                 break;
@@ -69,6 +88,7 @@ public class LoadedText
         // Reset position to beginning after detecting newline type
         _input.Seek(0);
 
+        // Set up the newline detection function based on detected type
         switch (_newLineType)
         {
             case NewLineType.N:
@@ -78,13 +98,13 @@ public class LoadedText
                 _isNextByteNewLine = (stream) => stream.Read() == '\r';
                 break;
             case NewLineType.RN:
-                _isNextByteNewLine = (stream)  =>
+                _isNextByteNewLine = (stream) =>
                 {
                     if (stream.Read() == '\r')
                     {
-                        if (stream.Peak() == '\n')
+                        if (stream.Peek() == '\n')
                         {
-                            stream.Read(); // consume \n
+                            stream.Read(); // Consume \n
                             return true;
                         }
                     }
@@ -93,89 +113,118 @@ public class LoadedText
                 break;
         }
     }
-    
-    private void GuessNumberOfLines()
+
+    /// <summary>
+    /// Estimates the number of lines based on file size and average characters per line
+    /// </summary>
+    private void EstimateLineCount()
     {
-        _linesCountGuess = (int)Math.Ceiling(_input.ByteLength / (double)charsPerLine);
+        _estimatedLineCount = (int)Math.Ceiling(_input.ByteLength / (double)CharsPerLine);
     }
     
+    /// <summary>
+    /// Asynchronously calculates byte offsets for all lines in the text
+    /// </summary>
     private void CalculateLineOffsets()
     {
         Task.Run(() =>
         {
             using var tmpInput = _input.Copy();
-            _lineOffsets.Capacity = (int)LinesCount;
+            _lineOffsets.Capacity = LinesCount;
 
+            // First line starts at position 0
             _lineOffsets.Add(0);
 
+            // Find all newline positions
             while (tmpInput.Position < tmpInput.ByteLength)
             {
                 if (_isNextByteNewLine(tmpInput))
                 {
-                    _lineOffsets.Add(tmpInput.Position);
+                    _lineOffsets.Add((int)tmpInput.Position);
                 }
             }
 
-            // if the file doesnt end with new line, add offset for EOF (for easier calculations)
+            // If file doesn't end with newline, add EOF offset for easier calculations
             if (_lineOffsets.Last() != tmpInput.ByteLength)
             {
-                _lineOffsets.Add(tmpInput.ByteLength);
+                _lineOffsets.Add((int)tmpInput.ByteLength);
             }
-            _linesCount = _lineOffsets.Count - 1;
 
+            _actualLineCount = _lineOffsets.Count - 1;
             _lineOffsetsCalculated = true;
             FinishedLoadingEvent?.Invoke(this, EventArgs.Empty);
         });
     }
 
-    public int GetLines(long startIndex, int lineCount, string[] buffer)
+    /// <summary>
+    /// Retrieves a range of lines from the text
+    /// </summary>
+    /// <param name="startLineIndex">Zero-based index of the first line to retrieve</param>
+    /// <param name="lineCount">Number of lines to retrieve</param>
+    /// <param name="buffer">Buffer to store the retrieved lines</param>
+    /// <returns>Actual number of lines retrieved</returns>
+    public int GetLines(int startLineIndex, int lineCount, string[] buffer)
     {
-        // wait for the whole block to be calculated
-        while (!_lineOffsetsCalculated && CurLinesCalculatedCount <= startIndex + lineCount)
+        // Wait for the requested lines to be calculated
+        while (!_lineOffsetsCalculated && CurrentLinesCalculatedCount <= startLineIndex + lineCount)
         {
-            // todo better way to get to the correct line mby?
             Thread.Sleep(100);
         }
 
-        if (startIndex >= LinesCount)   // index that isn't in the file
+        // Return early if start index is out of bounds
+        if (startLineIndex >= LinesCount)
         {
             return 0;
         }
 
-        if (startIndex + lineCount > LinesCount)    // make sure that we dont read outside the file (there are fewer lines than requested)
+        // Adjust line count if it extends beyond available lines
+        if (startLineIndex + lineCount > LinesCount)
         {
-            lineCount = (int)(LinesCount - startIndex);
+            lineCount = LinesCount - startLineIndex;
         }
-        
-        _input.Seek(_lineOffsets[(int)startIndex]);
+
+        // Read each line
+        _input.Seek(_lineOffsets[startLineIndex]);
         for (int i = 0; i < lineCount; i++)
         {
-            long size = _lineOffsets[(int)(startIndex + i + 1)] - _lineOffsets[(int)(startIndex + i)];
-            buffer[i] = _input.Read(size);
+            int lineSize = _lineOffsets[startLineIndex + i + 1] - _lineOffsets[startLineIndex + i];
+            buffer[i] = _input.Read(lineSize);
         }
-        
+
         return lineCount;
     }
 
 
-    public WordPosition IndexToWordPosition(int index)
+    /// <summary>
+    /// Converts a byte index to a line and character position
+    /// </summary>
+    /// <param name="byteIndex">Absolute byte index in the text</param>
+    /// <returns>WordPosition containing line index and character offset</returns>
+    public WordPosition IndexToWordPosition(int byteIndex)
     {
-        var lineOffsetsI = _lineOffsets.BinarySearch(index);
-        if (lineOffsetsI < 0)
+        var lineIndex = _lineOffsets.BinarySearch(byteIndex);
+        if (lineIndex < 0)
         {
-            lineOffsetsI = ~lineOffsetsI;
-            lineOffsetsI--;
+            // If not found, BinarySearch returns bitwise complement of next larger element
+            lineIndex = ~lineIndex;
+            lineIndex--;
         }
-        
-        return new WordPosition{
-            lineIndex = lineOffsetsI, 
-            lineOffset = index - _lineOffsets[lineOffsetsI]
+
+        return new WordPosition
+        {
+            LineIndex = lineIndex,
+            CharacterOffset = byteIndex - _lineOffsets[lineIndex]
         };
     }
 
-    public List<WordPosition> Search(string word)
+    /// <summary>
+    /// Searches for all occurrences of a word in the text
+    /// </summary>
+    /// <param name="searchWord">Word to search for (case-insensitive)</param>
+    /// <returns>List of positions where the word was found</returns>
+    public List<WordPosition> Search(string searchWord)
     {
-        var indexes = _searchFeature.Search(word);
-        return indexes.Select(IndexToWordPosition).ToList();
+        var byteIndexes = _searchFeature.Search(searchWord);
+        return byteIndexes.Select(IndexToWordPosition).ToList();
     }
 }
