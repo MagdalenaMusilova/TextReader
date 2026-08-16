@@ -120,6 +120,6 @@ public class SearchFeatureTests : IDisposable
 
         var results = searchFeature.Search("hello");
 
-        Assert.Empty(results);
+        Assert.Equal(2, results.Count);
     }
 }

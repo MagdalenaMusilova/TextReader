@@ -24,8 +24,6 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        _textInput = new FileTextInput("../../../Data/book.txt");
-        Reader.Load(_textInput);
 
         PreviewKeyDown += MainWindow_PreviewKeyDown;
     }

@@ -49,6 +49,10 @@ Alternativně spusťte `TextReader.exe` z buildu.
 | `Home/End` | Skok na začátek/konec dokumentu |
 | `PgUp/PgDn` | Stránkování |
 
+### Ovládání myší
+
+- **Double-click na levé straně readeru** - Přepnutí číslování řádků
+
 ## Technické řešení
 
 ### Optimalizace pro velké soubory

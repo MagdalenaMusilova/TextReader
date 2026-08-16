@@ -24,7 +24,7 @@ public class LoadedText
 
     private NewLineType _newLineType;
     private int _newLineSize;
-    private Func<ITextInput, bool> _isNextByteNewLine;
+    private Func<ITextInput, bool> _isNextByteNewLine = null!;
 
     /// <summary>
     /// Total number of lines in the text (estimated until fully loaded)
