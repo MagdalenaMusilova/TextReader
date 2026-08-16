@@ -86,15 +86,6 @@ RenderCanvas          - custom canvas s DrawingVisual API
 
 **Hybrid strategie pro URL:** Aplikace začne s HTTP range requests (okamžitá dostupnost) a paralelně stahuje celý soubor na pozadí. Po dokončení stažení automaticky přepne na rychlejší file-based operace.
 
-## Splnění požadavků zadání
-
-- [x] Načtení z txt souboru, webové adresy, random textu
-- [x] Uložení do souboru
-- [x] Vyhledávání s Ctrl+F, (Shift)F3, scroll na výsledek
-- [x] Zobrazení milionů řádků bez zatížení GUI (virtualizace)
-- [x] Plynulé scrollování (kolečko myši, klávesy, scrollbar)
-- [x] Bez použití hotových texteditor komponent
-
 ## Technologie
 
 - .NET 8.0
