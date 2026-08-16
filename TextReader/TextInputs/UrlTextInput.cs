@@ -88,7 +88,7 @@ public class UrlTextInput : ITextInput
     
     public ITextInput Copy()
     {
-        return _usedInput.Copy();   // todo kinda a bad copy :D 
+        return _usedInput.Copy();   
     }
 
     ~UrlTextInput()
@@ -193,7 +193,7 @@ public class UrlTextInput : ITextInput
                 Directory.CreateDirectory(directory);
             }
 
-            while (!_fileTextInputUsed) //todo mby use event instead? But that could create race condition?
+            while (!_fileTextInputUsed)
             {
                 await Task.Delay(100);
             }
