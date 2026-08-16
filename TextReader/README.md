@@ -22,12 +22,14 @@ WPF aplikace pro prohlížení velkých textových souborů z různých zdrojů.
 
 ## Spuštění
 
+Připravený build aplikace najdete v kořenové složce projektu - stačí spustit `TextReader.exe`.
+
+Pro spuštění ze zdrojových kódů:
+
 ```bash
 cd TextReader
 dotnet run
 ```
-
-Alternativně spusťte `TextReader.exe` z buildu.
 
 ## Ovládání
 
@@ -51,7 +53,7 @@ Alternativně spusťte `TextReader.exe` z buildu.
 
 ### Ovládání myší
 
-- **Double-click na levé straně readeru** - Přepnutí číslování řádků
+- **Double-click na levé straně readeru** - Přepnout číslování řádků
 
 ## Technické řešení
 
